@@ -84,10 +84,24 @@ Located at `src/db/queries/game-state.queries.ts`:
 - `fetchEmpireExploredSystems(empireId: string)`: Reads `explored_systems` JSONB from empires table
 - `fetchTurnHistoryForReconstruction(gameId: string, upToTurn: number)`: Fetches TurnHistory entries up to target turn
 
-## Contract Interface (FN-002 Alignment)
-- `getVisibleGameState(empireId, gameId)` matches FN-002's expected interface
-- `TurnAction` shape aligns with FN-002's turn resolution pipeline
-- Uses `TurnHistory` type (not `TurnHistoryEntry`) per FN-001 exports
+## Turn Resolution Pipeline
+- **TurnResolutionService**: Validates and resolves turn actions against the FN-002 contract.
+  - `resolveTurnActions(actions: TurnAction[], currentTurn: number): void` — Validates action structure, turn number alignment, and payload shape.
+- **TurnAction Validator**: `validateTurnAction(action: TurnAction)` — Validates individual TurnAction objects:
+  - Ensures `type` is a non-empty string.
+  - Ensures `payload` is a non-null object.
+  - Ensures `turnNumber` is a positive integer.
+  - Validates payload fields based on action type (e.g., `MOVE_FLEET` requires `fleetId` and `destinationStarId`).
+- **Supported Action Types**:
+  - `MOVE_FLEET`: Requires `fleetId` (string) and `destinationStarId` (string).
+  - `BUILD_STRUCTURE`: Requires `planetId` (string) and `structureType` (string).
+  - Unknown action types log a warning but are allowed by default.
+
+## Contract Interface for FN-002
+- `getVisibleGameState(empireId, gameId)` matches expected interface
+- `VisibleGameState` type aligns with FN-002's expected shape
+- `TurnAction` shape matches FN-002's turn resolution pipeline format
+- Turn resolution pipeline now includes validation via `TurnResolutionService` and `validateTurnAction`
 
 ## Schema & Entity Model Validation
 - Database schema defined in `migrations/001_initial_game_schema.sql` aligns with entity interfaces in `src/types/game-entities.ts`
