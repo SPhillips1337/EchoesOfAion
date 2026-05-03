@@ -74,6 +74,12 @@ This module provides core services for querying, mutating, and reconstructing se
 - `VisibleGameState` type aligns with FN-002's expected shape
 - `TurnAction` shape matches FN-002's turn resolution pipeline format
 
+## Schema & Entity Model Validation
+- Database schema defined in `migrations/001_initial_game_schema.sql` aligns with entity interfaces in `src/types/game-entities.ts`
+- Column definitions in `src/db/schema.ts` match migration SQL constraints
+- All entity types validated: Star, Planet, StarLane, Empire, Fleet, Ship, Structure, BuildQueue, TurnHistory
+- TypeScript typecheck passes after fixing missing type imports in services
+
 ## Future Dependencies (Follow-up Tasks)
 - **FN-009**: Add `explored_systems JSONB` column to `empires` table
 - **FN-010**: Create `games` table and add `game_id` columns to all entities
