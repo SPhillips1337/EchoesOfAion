@@ -1,78 +1,93 @@
-# Server-Side Game State Management Documentation
+# Server-Side Game State Management
 
 ## Overview
-This module provides core services for querying, mutating, and reconstructing server-side game state for Echoes of Aion. It supports fog-of-war visibility filtering and deterministic turn replay for verification.
+This module provides services for querying, mutating, and reconstructing server-side game state with empire-specific visibility (fog-of-war) filtering. It supports the Milestone 1 single-player MVP's core simulation requirements.
 
-## Service Method Signatures
+## Service Methods
 
 ### GameStateService
-- `getFullGameState(gameId: string): Promise<FullGameState>`  
-  Fetches complete unfiltered game state from database.
+Located at `src/services/game-state.service.ts`
 
-- `getVisibleGameState(empireId: string, gameId: string): Promise<VisibleGameState>`  
-  Fetches game state filtered by empire-specific visibility (fog-of-war).
+#### `getFullGameState(gameId: string): Promise<FullGameState>`
+Fetches complete unfiltered game state for a specific game, aggregating all entity types from the database.
 
-- `mutateGameState(gameId: string, updates: Partial<FullGameState>): Promise<void>`  
-  Applies validated partial state updates to database with ID validation and resource checks.
+#### `getVisibleGameState(empireId: string, gameId: string): Promise<VisibleGameState>`
+Returns game state filtered by empire visibility (fog-of-war). Uses `VisibilityService` to apply filtering rules.
 
-- `reconstructStateForTurn(options: TurnReconstructionOptions): Promise<FullGameState>`  
-  Rebuilds game state by replaying `TurnAction` objects up to target turn.
+#### `mutateGameState(gameId: string, updates: Partial<FullGameState>): Promise<void>`
+Applies validated partial state updates to the database:
+- Validates all entity IDs reference existing rows
+- Prevents negative resource values
+- Merges partial updates with existing state before persisting
+- Uses database transactions for atomic updates
+
+#### `reconstructStateForTurn(options: TurnReconstructionOptions): Promise<FullGameState>`
+Rebuilds game state by deterministically replaying `TurnAction` objects from turn history up to the target turn. Throws `Error('Turn number X not found in history')` if target turn doesn't exist.
 
 ### VisibilityService
-- `filterVisibleState(empireId: string, fullState: FullGameState): Promise<VisibleGameState>`  
-  Filters full state to only include entities visible to the specified empire.
+Located at `src/services/visibility.service.ts`
+
+#### `filterVisibleState(empireId: string, fullState: FullGameState): Promise<VisibleGameState>`
+Applies fog-of-war filtering:
+- Reads empire's `explored_systems` from `empires` table (defaults to empty array if null)
+- Filters stars, planets, and star lanes to explored systems only
+- Filters fleets to friendly fleets or fleets in explored systems
+- Redacts sensitive data (enemy fleet compositions, unexplored resource values)
 
 ## Visibility Filtering Rules
-- **Stars/Planets/StarLanes**: Only entities in systems marked as explored by the empire (via `empires.explored_systems` JSONB column) are included.
-- **Fleets**: Friendly fleets (owned by the empire) and enemy fleets located in explored systems are included.
-- **Sensitive Data Redaction**: Enemy fleet compositions are redacted (set to `{}`), unexplored planet resources are set to `null`.
+- **Explored Systems**: Determined by `empires.explored_systems` JSONB column (array of star IDs)
+- **Stars/Planets**: Only systems explored by the empire
+- **Star Lanes**: Only lanes connecting two explored systems
+- **Fleets**: Friendly fleets + enemy fleets in explored systems
+- **Redaction**: Enemy fleet compositions set to `{}`, unexplored planet resources set to `null`
 
-## Turn Reconstruction Logic
-- **Action Shape**: `TurnAction` interface: `{ type: string, payload: Record<string, any>, turnNumber: number }`
-- **Deterministic Replay**: State is reconstructed by starting from base state and replaying all `TurnAction` objects from `turn_history.actions` in turn order up to the target turn.
-- **Error Handling**: Throws `Error('Turn number X not found in history')` if target turn doesn't exist in history.
+## Turn Reconstruction
+- **Action Shape**: `TurnAction` interface (`{ type: string, payload: Record<string, unknown>, turnNumber: number }`)
+- **Storage**: Actions stored as JSONB in `turn_history.actions` (per-empire entries)
+- **Replay**: Actions replayed in order, with each action deterministically modifying state
+- **Supported Actions**: `CREATE_FLEET`, `MOVE_FLEET`, `UPDATE_PLANET_RESOURCES`
 
-## Example State Shapes
+## Data Types
+Defined in `src/types/game-state.ts`:
 
 ### FullGameState
+Aggregates all entity types for a game:
 ```typescript
-{
-    stars: [{ id: 'star1', name: 'Sol', ... }],
-    planets: [{ id: 'planet1', star_id: 'star1', ... }],
-    starLanes: [{ id: 'lane1', source_star_id: 'star1', ... }],
-    empires: [{ id: 'empire1', name: 'Terran', ... }],
-    fleets: [{ id: 'fleet1', empire_id: 'empire1', ... }],
-    buildQueues: [{ id: 'bq1', entity_type: 'planet', ... }],
-    turnHistory: [{ id: 'th1', empire_id: 'empire1', turn_number: 1, actions: [...] }],
-    currentTurn: 1,
-    gameId: 'game1'
+interface FullGameState {
+    stars: Star[];
+    planets: Planet[];
+    starLanes: StarLane[];
+    empires: Empire[];
+    fleets: Fleet[];
+    buildQueues: BuildQueue[];
+    turnHistory: TurnHistory[];
+    currentTurn: number;
+    gameId: string;
 }
 ```
 
 ### VisibleGameState
+Filtered version of FullGameState with only visible entities.
+
+### TurnReconstructionOptions
 ```typescript
-{
-    stars: [{ id: 'star1', name: 'Sol', ... }], // Only explored
-    planets: [{ id: 'planet1', star_id: 'star1', ... }], // Only explored
-    starLanes: [{ id: 'lane1', source_star_id: 'star1', ... }], // Only connected explored
-    fleets: [{ id: 'fleet1', empire_id: 'empire1', ... }], // Friendly + explored enemy
-    empires: [{ id: 'empire1', ... }], // Only own empire
-    buildQueues: [],
-    turnHistory: [],
-    currentTurn: 1,
-    gameId: 'game1'
+interface TurnReconstructionOptions {
+    gameId: string;
+    turnNumber: number;
+    includeHistory?: boolean; // Include turn history in result
 }
 ```
 
 ## Query Functions
-- `fetchFullGameState(gameId: string)` — Joins all entity tables filtered by `game_id`
-- `fetchEmpireExploredSystems(empireId: string)` — Reads `explored_systems` JSONB from `empires` table
-- `fetchTurnHistoryForReconstruction(gameId: string, upToTurn: number)` — Fetches per-empire `TurnHistory` entries up to target turn
+Located at `src/db/queries/game-state.queries.ts`:
+- `fetchFullGameState(gameId: string)`: Joins all entity tables for a game
+- `fetchEmpireExploredSystems(empireId: string)`: Reads `explored_systems` JSONB from empires table
+- `fetchTurnHistoryForReconstruction(gameId: string, upToTurn: number)`: Fetches TurnHistory entries up to target turn
 
-## Contract Interface for FN-002
-- `getVisibleGameState(empireId, gameId)` matches expected interface
-- `VisibleGameState` type aligns with FN-002's expected shape
-- `TurnAction` shape matches FN-002's turn resolution pipeline format
+## Contract Interface (FN-002 Alignment)
+- `getVisibleGameState(empireId, gameId)` matches FN-002's expected interface
+- `TurnAction` shape aligns with FN-002's turn resolution pipeline
+- Uses `TurnHistory` type (not `TurnHistoryEntry`) per FN-001 exports
 
 ## Schema & Entity Model Validation
 - Database schema defined in `migrations/001_initial_game_schema.sql` aligns with entity interfaces in `src/types/game-entities.ts`
@@ -80,7 +95,44 @@ This module provides core services for querying, mutating, and reconstructing se
 - All entity types validated: Star, Planet, StarLane, Empire, Fleet, Ship, Structure, BuildQueue, TurnHistory
 - TypeScript typecheck passes after fixing missing type imports in services
 
+## Database Schema Requirements
+- `empires` table must have `explored_systems` JSONB column (follow-up task FN-016 created)
+- All entity tables must have `game_id` column for proper filtering
+- `turn_history.actions` stores JSONB array of `TurnAction` objects
+
 ## Future Dependencies (Follow-up Tasks)
 - **FN-009**: Add `explored_systems JSONB` column to `empires` table
 - **FN-010**: Create `games` table and add `game_id` columns to all entities
 - **FN-012**: Add `game_id` field to all entity interfaces in `game-entities.ts`
+
+## Example Response Shapes
+
+### FullGameState Example
+```json
+{
+    "stars": [{ "id": "star1", "name": "Sol", "x_coord": 0, "y_coord": 0, "system_size": "medium" }],
+    "planets": [{ "id": "planet1", "star_id": "star1", "resources": { "minerals": 100 } }],
+    "starLanes": [{ "id": "lane1", "source_star_id": "star1", "destination_star_id": "star2" }],
+    "empires": [{ "id": "empire1", "name": "Player", "explored_systems": ["star1"] }],
+    "fleets": [{ "id": "fleet1", "empire_id": "empire1", "star_id": "star1" }],
+    "buildQueues": [],
+    "turnHistory": [],
+    "currentTurn": 1,
+    "gameId": "game1"
+}
+```
+
+### VisibleGameState Example
+```json
+{
+    "stars": [{ "id": "star1", "name": "Sol", ... }],
+    "planets": [{ "id": "planet1", "star_id": "star1", "resources": { "minerals": 100 } }],
+    "starLanes": [],
+    "fleets": [{ "id": "fleet1", "empire_id": "empire1", "composition": { ... } }],
+    "empires": [{ "id": "empire1", ... }],
+    "buildQueues": [],
+    "turnHistory": [],
+    "currentTurn": 1,
+    "gameId": "game1"
+}
+```

@@ -35,6 +35,8 @@ export interface Empire {
     name: string;
     player_type: 'human' | 'ai';
     color: string;
+    /** JSONB array of explored star system IDs stored as strings */
+    explored_systems: string[];
     created_at: Date;
 }
 

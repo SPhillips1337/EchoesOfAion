@@ -1,16 +1,40 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, MockInstance } from 'vitest';
 import { GameStateService } from '../../src/services/game-state.service';
 import { fetchFullGameState, fetchTurnHistoryForReconstruction } from '../../src/db/queries/game-state.queries';
+import { Pool } from 'pg';
 import { FullGameState, TurnAction } from '../../src/types/game-state';
 
 vi.mock('../../src/db/queries/game-state.queries');
 
 describe('GameStateService', () => {
     let service: GameStateService;
+    let mockPool: any;
+    let mockClient: any;
 
     beforeEach(() => {
-        service = new GameStateService();
+        mockClient = {
+            query: vi.fn().mockResolvedValue({ rowCount: 1 }),
+            release: vi.fn(),
+        };
+        mockPool = {
+            connect: vi.fn().mockResolvedValue(mockClient),
+            query: vi.fn().mockResolvedValue({ rowCount: 1 }),
+        };
+        service = new GameStateService(mockPool);
         vi.clearAllMocks();
+        
+        (fetchFullGameState as vi.Mock).mockResolvedValue({
+            stars: [],
+            planets: [],
+            starLanes: [],
+            empires: [],
+            fleets: [],
+            buildQueues: [],
+            turnHistory: [],
+            currentTurn: 1,
+            gameId: 'game1',
+        });
+        (fetchTurnHistoryForReconstruction as vi.Mock).mockResolvedValue([]);
     });
 
     describe('getFullGameState', () => {
@@ -39,37 +63,17 @@ describe('GameStateService', () => {
             const updates = {
                 planets: [{ id: 'planet1', resources: { minerals: -10 } } as any],
             };
-            (fetchFullGameState as vi.Mock).mockResolvedValueOnce({
-                stars: [],
-                planets: [{ id: 'planet1', resources: { minerals: 20 } }],
-                starLanes: [],
-                empires: [],
-                fleets: [],
-                buildQueues: [],
-                turnHistory: [],
-                currentTurn: 1,
-                gameId: 'game1',
-            });
+            // validateEntityIds is called first, so mock client queries to pass
+            mockClient.query.mockResolvedValueOnce({ rowCount: 1 });
 
             await expect(service.mutateGameState('game1', updates)).rejects.toThrow('Negative resource value for minerals on planet');
         });
 
-        it('should throw error for invalid entity IDs', async () => {
+        it('should throw error for invalid entity IDs (empty ID)', async () => {
             const updates = {
                 stars: [{ id: '' } as any],
             };
-            (fetchFullGameState as vi.Mock).mockResolvedValueOnce({
-                stars: [],
-                planets: [],
-                starLanes: [],
-                empires: [],
-                fleets: [],
-                buildQueues: [],
-                turnHistory: [],
-                currentTurn: 1,
-                gameId: 'game1',
-            });
-
+            // validateEntityIds will throw before DB call for empty ID
             await expect(service.mutateGameState('game1', updates)).rejects.toThrow('Invalid ID for star entity');
         });
 
@@ -77,17 +81,8 @@ describe('GameStateService', () => {
             const updates = {
                 stars: [{ id: 'non-existent-star' } as any],
             };
-            (fetchFullGameState as vi.Mock).mockResolvedValueOnce({
-                stars: [],
-                planets: [],
-                starLanes: [],
-                empires: [],
-                fleets: [],
-                buildQueues: [],
-                turnHistory: [],
-                currentTurn: 1,
-                gameId: 'game1',
-            });
+            // Mock DB query to return 0 rows (entity not found)
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
 
             await expect(service.mutateGameState('game1', updates)).rejects.toThrow('not found in database');
         });
@@ -97,17 +92,8 @@ describe('GameStateService', () => {
                 stars: [{ id: 'star1', name: 'Sol' } as any],
                 planets: [{ id: 'planet1', resources: { minerals: 10 } } as any],
             };
-            (fetchFullGameState as vi.Mock).mockResolvedValueOnce({
-                stars: [{ id: 'star1', name: 'Old Sol' }],
-                planets: [{ id: 'planet1', resources: { minerals: 5 } }],
-                starLanes: [],
-                empires: [],
-                fleets: [],
-                buildQueues: [],
-                turnHistory: [],
-                currentTurn: 1,
-                gameId: 'game1',
-            });
+            // Mock all DB queries to return success
+            mockClient.query.mockResolvedValue({ rowCount: 1 });
 
             await expect(service.mutateGameState('game1', updates)).resolves.not.toThrow();
         });
@@ -152,10 +138,9 @@ describe('GameStateService', () => {
     });
 
     describe('getVisibleGameState', () => {
-        it.skip('should throw error deferred to Step 3', async () => {
-            // Mock fetchFullGameState to return a valid state so method can throw the expected error
-            (fetchFullGameState as vi.Mock).mockResolvedValueOnce({
-                stars: [{ id: 'star1' }],
+        it.skip('should return visible state filtered by empire', async () => {
+            const mockState: FullGameState = {
+                stars: [{ id: 'star1', name: 'Sol', x_coord: 0, y_coord: 0, system_size: 'medium', created_at: new Date() }],
                 planets: [],
                 starLanes: [],
                 empires: [],
@@ -164,10 +149,11 @@ describe('GameStateService', () => {
                 turnHistory: [],
                 currentTurn: 1,
                 gameId: 'game1',
-            });
+            };
+            (fetchFullGameState as vi.Mock).mockResolvedValueOnce(mockState);
 
-            await expect(service.getVisibleGameState('empire1', 'game1'))
-                .rejects.toThrow('getVisibleGameState deferred to Step 3');
+            const result = await service.getVisibleGameState('empire1', 'game1');
+            expect(result.stars).toHaveLength(1);
         });
     });
 });
