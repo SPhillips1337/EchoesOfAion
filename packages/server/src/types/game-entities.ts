@@ -1,5 +1,6 @@
 export interface Star {
     id: string; // UUID
+    game_id?: string; // UUID
     name: string;
     x_coord: number;
     y_coord: number;
@@ -9,6 +10,7 @@ export interface Star {
 
 export interface Planet {
     id: string; // UUID
+    game_id?: string; // UUID
     star_id: string; // UUID
     name: string;
     planet_type: 'terrestrial' | 'gas_giant' | 'ice' | 'desert' | 'ocean';
@@ -20,6 +22,7 @@ export interface Planet {
 
 export interface StarLane {
     id: string; // UUID
+    game_id?: string; // UUID
     source_star_id: string; // UUID
     destination_star_id: string; // UUID
     distance: number;
@@ -28,6 +31,7 @@ export interface StarLane {
 
 export interface Empire {
     id: string; // UUID
+    game_id?: string; // UUID
     name: string;
     player_type: 'human' | 'ai';
     color: string;
@@ -36,6 +40,7 @@ export interface Empire {
 
 export interface Fleet {
     id: string; // UUID
+    game_id?: string; // UUID
     empire_id: string; // UUID
     star_id: string; // UUID
     name: string;
@@ -64,6 +69,7 @@ export type BuildQueueEntityType = 'planet' | 'fleet';
 
 export interface BuildQueue {
     id: string; // UUID
+    game_id?: string; // UUID
     entity_type: BuildQueueEntityType;
     entity_id: string; // UUID (polymorphic)
     item_type: string;
@@ -73,6 +79,7 @@ export interface BuildQueue {
 
 export interface TurnHistory {
     id: string; // UUID
+    game_id?: string; // UUID
     empire_id: string; // UUID
     turn_number: number;
     actions: unknown[]; // JSONB array

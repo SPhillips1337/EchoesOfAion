@@ -25,6 +25,7 @@ import { Star, Planet, StarLane } from '../types/game-entities';
  */
 export interface GalaxyStar {
   id: string;
+  gameId?: string;
   name: string;
   xCoord: number;
   yCoord: number;
@@ -48,6 +49,7 @@ export interface GalaxyStar {
  */
 export interface GalaxyPlanet {
   id: string;
+  gameId?: string;
   starId: string;
   name: string;
   planetType: 'terrestrial' | 'gas_giant' | 'ice' | 'desert' | 'ocean';
@@ -70,6 +72,7 @@ export interface GalaxyPlanet {
  */
 export interface GalaxyStarLane {
   id: string;
+  gameId?: string;
   sourceStarId: string;
   destinationStarId: string;
   distance: number;
@@ -154,6 +157,7 @@ export function isGalaxyStarLane(obj: unknown): obj is GalaxyStarLane {
 export function toStarEntity(galaxyStar: GalaxyStar): Star {
   return {
     id: galaxyStar.id,
+    game_id: galaxyStar.gameId,
     name: galaxyStar.name,
     x_coord: galaxyStar.xCoord,
     y_coord: galaxyStar.yCoord,
@@ -171,6 +175,7 @@ export function toStarEntity(galaxyStar: GalaxyStar): Star {
 export function toPlanetEntity(galaxyPlanet: GalaxyPlanet): Planet {
   return {
     id: galaxyPlanet.id,
+    game_id: galaxyPlanet.gameId,
     star_id: galaxyPlanet.starId,
     name: galaxyPlanet.name,
     planet_type: galaxyPlanet.planetType,
@@ -190,6 +195,7 @@ export function toPlanetEntity(galaxyPlanet: GalaxyPlanet): Planet {
 export function toStarLaneEntity(galaxyStarLane: GalaxyStarLane): StarLane {
   return {
     id: galaxyStarLane.id,
+    game_id: galaxyStarLane.gameId,
     source_star_id: galaxyStarLane.sourceStarId,
     destination_star_id: galaxyStarLane.destinationStarId,
     distance: galaxyStarLane.distance,
@@ -206,6 +212,7 @@ export function toStarLaneEntity(galaxyStarLane: GalaxyStarLane): StarLane {
 export function fromStarEntity(star: Star): GalaxyStar {
   return {
     id: star.id,
+    gameId: star.game_id,
     name: star.name,
     xCoord: star.x_coord,
     yCoord: star.y_coord,
@@ -223,6 +230,7 @@ export function fromStarEntity(star: Star): GalaxyStar {
 export function fromPlanetEntity(planet: Planet): GalaxyPlanet {
   return {
     id: planet.id,
+    gameId: planet.game_id,
     starId: planet.star_id,
     name: planet.name,
     planetType: planet.planet_type,
@@ -242,6 +250,7 @@ export function fromPlanetEntity(planet: Planet): GalaxyPlanet {
 export function fromStarLaneEntity(starLane: StarLane): GalaxyStarLane {
   return {
     id: starLane.id,
+    gameId: starLane.game_id,
     sourceStarId: starLane.source_star_id,
     destinationStarId: starLane.destination_star_id,
     distance: starLane.distance,
