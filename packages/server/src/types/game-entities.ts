@@ -1,6 +1,6 @@
 export interface Star {
     id: string; // UUID
-    game_id?: string; // UUID
+    game_id: string; // UUID - REQUIRED: associates star with a game
     name: string;
     x_coord: number;
     y_coord: number;
@@ -10,7 +10,7 @@ export interface Star {
 
 export interface Planet {
     id: string; // UUID
-    game_id?: string; // UUID
+    game_id: string; // UUID - REQUIRED: associates planet with a game
     star_id: string; // UUID
     name: string;
     planet_type: 'terrestrial' | 'gas_giant' | 'ice' | 'desert' | 'ocean';
@@ -22,7 +22,7 @@ export interface Planet {
 
 export interface StarLane {
     id: string; // UUID
-    game_id?: string; // UUID
+    game_id: string; // UUID - REQUIRED: associates star lane with a game
     source_star_id: string; // UUID
     destination_star_id: string; // UUID
     distance: number;
@@ -31,7 +31,7 @@ export interface StarLane {
 
 export interface Empire {
     id: string; // UUID
-    game_id?: string; // UUID
+    game_id: string; // UUID - REQUIRED: associates empire with a game
     name: string;
     player_type: 'human' | 'ai';
     color: string;
@@ -42,7 +42,7 @@ export interface Empire {
 
 export interface Fleet {
     id: string; // UUID
-    game_id?: string; // UUID
+    game_id: string; // UUID - REQUIRED: associates fleet with a game
     empire_id: string; // UUID
     star_id: string; // UUID
     name: string;
@@ -71,7 +71,7 @@ export type BuildQueueEntityType = 'planet' | 'fleet';
 
 export interface BuildQueue {
     id: string; // UUID
-    game_id?: string; // UUID
+    game_id: string; // UUID - REQUIRED: associates build queue with a game
     entity_type: BuildQueueEntityType;
     entity_id: string; // UUID (polymorphic)
     item_type: string;
@@ -81,7 +81,7 @@ export interface BuildQueue {
 
 export interface TurnHistory {
     id: string; // UUID
-    game_id?: string; // UUID
+    game_id: string; // UUID - REQUIRED: associates turn history with a game
     empire_id: string; // UUID
     turn_number: number;
     actions: unknown[]; // JSONB array

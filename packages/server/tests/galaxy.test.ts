@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createSeededPrng, randomInt, randomFloat, randomChoice, weightedChoice } from '../src/galaxy/prng';
-import { isGalaxyStar, isGalaxyPlanet, isGalaxyStarLane, GalaxyStar, GalaxyPlanet, GalaxyStarLane } from '../src/galaxy/types';
+import { isGalaxyStar, isGalaxyPlanet, isGalaxyStarLane, GalaxyStar, GalaxyPlanet, GalaxyStarLane, toStarEntity, toPlanetEntity, toStarLaneEntity } from '../src/galaxy/types';
 import { generateStarSystems, getGalaxyBounds, getStarNames } from '../src/galaxy/star-generator';
 import { generatePlanetsForSystem, getResourceTypes, getPlanetTypeWeights } from '../src/galaxy/planet-generator';
 import { generateStarLanes, getLaneCount, getAverageLanesPerStar } from '../src/galaxy/lane-generator';
@@ -325,22 +325,24 @@ describe('isGalaxyStarLane', () => {
 // ============================================================================
 
 describe('generateStarSystems', () => {
+  const TEST_GAME_ID = '123e4567-e89b-12d3-a456-426614174000';
+
   it('should generate the default number of stars (25-40) when count is not specified', () => {
-    const stars = generateStarSystems('test-seed');
+    const stars = generateStarSystems('test-seed', TEST_GAME_ID);
 
     expect(stars.length).toBeGreaterThanOrEqual(25);
     expect(stars.length).toBeLessThanOrEqual(40);
   });
 
   it('should generate the specified number of stars when count is provided', () => {
-    const stars = generateStarSystems('test-seed', 30);
+    const stars = generateStarSystems('test-seed', TEST_GAME_ID, 30);
 
     expect(stars.length).toBe(30);
   });
 
   it('should produce deterministic results for the same seed', () => {
-    const stars1 = generateStarSystems('deterministic-seed');
-    const stars2 = generateStarSystems('deterministic-seed');
+    const stars1 = generateStarSystems('deterministic-seed', TEST_GAME_ID);
+    const stars2 = generateStarSystems('deterministic-seed', TEST_GAME_ID);
 
     expect(stars1.length).toBe(stars2.length);
 
@@ -354,8 +356,8 @@ describe('generateStarSystems', () => {
   });
 
   it('should produce different results for different seeds', () => {
-    const stars1 = generateStarSystems('seed-A');
-    const stars2 = generateStarSystems('seed-B');
+    const stars1 = generateStarSystems('seed-A', TEST_GAME_ID);
+    const stars2 = generateStarSystems('seed-B', TEST_GAME_ID);
 
     // Names might overlap, but coordinates should differ
     const hasDifferentCoords = stars1.some((star, i) =>
@@ -366,7 +368,7 @@ describe('generateStarSystems', () => {
   });
 
   it('should generate stars within galaxy bounds', () => {
-    const stars = generateStarSystems('bounds-test', 50);
+    const stars = generateStarSystems('bounds-test', TEST_GAME_ID, 50);
     const bounds = getGalaxyBounds();
 
     for (const star of stars) {
@@ -378,7 +380,7 @@ describe('generateStarSystems', () => {
   });
 
   it('should assign valid system sizes', () => {
-    const stars = generateStarSystems('size-test', 100);
+    const stars = generateStarSystems('size-test', TEST_GAME_ID, 100);
     const validSizes = ['small', 'medium', 'large'];
 
     for (const star of stars) {
@@ -387,7 +389,7 @@ describe('generateStarSystems', () => {
   });
 
   it('should have correct size distribution (approximately)', () => {
-    const stars = generateStarSystems('distribution-test', 1000);
+    const stars = generateStarSystems('distribution-test', TEST_GAME_ID, 1000);
 
     const sizeCounts = { small: 0, medium: 0, large: 0 };
     for (const star of stars) {
@@ -408,14 +410,14 @@ describe('generateStarSystems', () => {
   });
 
   it('should generate unique IDs for each star', () => {
-    const stars = generateStarSystems('unique-id-test', 50);
+    const stars = generateStarSystems('unique-id-test', TEST_GAME_ID, 50);
     const ids = new Set(stars.map(s => s.id));
 
     expect(ids.size).toBe(stars.length);
   });
 
   it('should generate valid GalaxyStar objects', () => {
-    const stars = generateStarSystems('valid-objects-test', 10);
+    const stars = generateStarSystems('valid-objects-test', TEST_GAME_ID, 10);
 
     for (const star of stars) {
       expect(isGalaxyStar(star)).toBe(true);
@@ -423,7 +425,7 @@ describe('generateStarSystems', () => {
   });
 
   it('should assign names from the star name list or derived names', () => {
-    const stars = generateStarSystems('name-test', 20);
+    const stars = generateStarSystems('name-test', TEST_GAME_ID, 20);
     const validNames = getStarNames();
 
     for (const star of stars) {
@@ -696,21 +698,23 @@ describe('getPlanetTypeWeights', () => {
 // ============================================================================
 
 describe('generateStarLanes', () => {
+  const TEST_GAME_ID = '123e4567-e89b-12d3-a456-426614174000';
+
   let stars: GalaxyStar[];
 
   beforeEach(() => {
     // Generate a small fixed set of stars for testing
     stars = [
-      { id: 'star-1', name: 'Sol', xCoord: 100, yCoord: 100, systemSize: 'medium', createdAt: new Date() },
-      { id: 'star-2', name: 'Alpha Centauri', xCoord: 200, yCoord: 100, systemSize: 'small', createdAt: new Date() },
-      { id: 'star-3', name: 'Vega', xCoord: 300, yCoord: 150, systemSize: 'large', createdAt: new Date() },
-      { id: 'star-4', name: 'Sirius', xCoord: 400, yCoord: 200, systemSize: 'medium', createdAt: new Date() },
-      { id: 'star-5', name: 'Polaris', xCoord: 500, yCoord: 300, systemSize: 'small', createdAt: new Date() },
+      { id: 'star-1', gameId: TEST_GAME_ID, name: 'Sol', xCoord: 100, yCoord: 100, systemSize: 'medium', createdAt: new Date() },
+      { id: 'star-2', gameId: TEST_GAME_ID, name: 'Alpha Centauri', xCoord: 200, yCoord: 100, systemSize: 'small', createdAt: new Date() },
+      { id: 'star-3', gameId: TEST_GAME_ID, name: 'Vega', xCoord: 300, yCoord: 150, systemSize: 'large', createdAt: new Date() },
+      { id: 'star-4', gameId: TEST_GAME_ID, name: 'Sirius', xCoord: 400, yCoord: 200, systemSize: 'medium', createdAt: new Date() },
+      { id: 'star-5', gameId: TEST_GAME_ID, name: 'Polaris', xCoord: 500, yCoord: 300, systemSize: 'small', createdAt: new Date() },
     ];
   });
 
   it('should return an array of GalaxyStarLane objects', () => {
-    const lanes = generateStarLanes(stars, 'test-seed');
+    const lanes = generateStarLanes(stars, 'test-seed', TEST_GAME_ID);
 
     expect(Array.isArray(lanes)).toBe(true);
     for (const lane of lanes) {
@@ -719,7 +723,7 @@ describe('generateStarLanes', () => {
   });
 
   it('should create a fully connected graph (BFS validation)', () => {
-    const lanes = generateStarLanes(stars, 'connectivity-test');
+    const lanes = generateStarLanes(stars, 'connectivity-test', TEST_GAME_ID);
 
     // Build adjacency list
     const adjList = new Map<string, Set<string>>();
@@ -753,8 +757,8 @@ describe('generateStarLanes', () => {
 
   it('should have approximately 1.5-2 lanes per star on average', () => {
     // Generate more stars for better average
-    const manyStars = generateStarSystems('many-stars', 30);
-    const lanes = generateStarLanes(manyStars, 'lane-count-test');
+    const manyStars = generateStarSystems('many-stars', TEST_GAME_ID, 30);
+    const lanes = generateStarLanes(manyStars, 'lane-count-test', TEST_GAME_ID);
 
     const avgLanes = getAverageLanesPerStar(manyStars, lanes);
 
@@ -763,8 +767,8 @@ describe('generateStarLanes', () => {
   });
 
   it('should produce deterministic results for the same seed', () => {
-    const lanes1 = generateStarLanes(stars, 'deterministic-seed');
-    const lanes2 = generateStarLanes(stars, 'deterministic-seed');
+    const lanes1 = generateStarLanes(stars, 'deterministic-seed', TEST_GAME_ID);
+    const lanes2 = generateStarLanes(stars, 'deterministic-seed', TEST_GAME_ID);
 
     expect(lanes1.length).toBe(lanes2.length);
 
@@ -777,8 +781,8 @@ describe('generateStarLanes', () => {
   });
 
   it('should produce different results for different seeds', () => {
-    const lanes1 = generateStarLanes(stars, 'seed-A');
-    const lanes2 = generateStarLanes(stars, 'seed-B');
+    const lanes1 = generateStarLanes(stars, 'seed-A', TEST_GAME_ID);
+    const lanes2 = generateStarLanes(stars, 'seed-B', TEST_GAME_ID);
 
     // Lane sets should differ (not guaranteed but very likely)
     const ids1 = lanes1.map(l => l.id).sort();
@@ -787,7 +791,7 @@ describe('generateStarLanes', () => {
   });
 
   it('should calculate correct Euclidean distances', () => {
-    const lanes = generateStarLanes(stars, 'distance-test');
+    const lanes = generateStarLanes(stars, 'distance-test', TEST_GAME_ID);
 
     for (const lane of lanes) {
       const source = stars.find(s => s.id === lane.sourceStarId)!;
@@ -804,7 +808,7 @@ describe('generateStarLanes', () => {
   });
 
   it('should not create duplicate lanes between the same stars', () => {
-    const lanes = generateStarLanes(stars, 'duplicate-test');
+    const lanes = generateStarLanes(stars, 'duplicate-test', TEST_GAME_ID);
     const lanePairs = new Set<string>();
 
     for (const lane of lanes) {
@@ -818,16 +822,16 @@ describe('generateStarLanes', () => {
   });
 
   it('should return empty array for less than 2 stars', () => {
-    const emptyLanes = generateStarLanes([], 'empty-test');
+    const emptyLanes = generateStarLanes([], 'empty-test', TEST_GAME_ID);
     expect(emptyLanes).toEqual([]);
 
     const singleStar = [stars[0]];
-    const singleLanes = generateStarLanes(singleStar, 'single-test');
+    const singleLanes = generateStarLanes(singleStar, 'single-test', TEST_GAME_ID);
     expect(singleLanes).toEqual([]);
   });
 
   it('should generate unique IDs for each lane', () => {
-    const lanes = generateStarLanes(stars, 'unique-id-test');
+    const lanes = generateStarLanes(stars, 'unique-id-test', TEST_GAME_ID);
     const ids = new Set(lanes.map(l => l.id));
 
     expect(ids.size).toBe(lanes.length);
@@ -870,5 +874,94 @@ describe('getAverageLanesPerStar', () => {
 
   it('should return 0 for empty stars array', () => {
     expect(getAverageLanesPerStar([], [])).toBe(0);
+  });
+});
+
+// ============================================================================
+// gameId Propagation Tests
+// ============================================================================
+
+describe('gameId propagation', () => {
+  const TEST_GAME_ID = '123e4567-e89b-12d3-a456-426614174000';
+
+  describe('generateStarSystems', () => {
+    it('should set gameId on generated stars when provided', () => {
+      const stars = generateStarSystems('test-seed', TEST_GAME_ID, 5);
+
+      for (const star of stars) {
+        expect(star.gameId).toBe(TEST_GAME_ID);
+      }
+    });
+  });
+
+  describe('generatePlanetsForSystem', () => {
+    it('should set gameId on generated planets when provided', () => {
+      const stars = generateStarSystems('test-seed', TEST_GAME_ID, 1);
+      const star = stars[0];
+      const planets = generatePlanetsForSystem(star, 'test-seed', TEST_GAME_ID);
+
+      for (const planet of planets) {
+        expect(planet.gameId).toBe(TEST_GAME_ID);
+      }
+    });
+  });
+
+  describe('generateStarLanes', () => {
+    it('should set gameId on generated lanes when provided', () => {
+      const stars = generateStarSystems('test-seed', TEST_GAME_ID, 5);
+      const lanes = generateStarLanes(stars, 'test-seed', TEST_GAME_ID);
+
+      for (const lane of lanes) {
+        expect(lane.gameId).toBe(TEST_GAME_ID);
+      }
+    });
+  });
+
+  describe('toEntity conversion', () => {
+    it('should convert GalaxyStar to Star with game_id', () => {
+      const star: GalaxyStar = {
+        id: 'test-id',
+        gameId: TEST_GAME_ID,
+        name: 'Test Star',
+        xCoord: 100,
+        yCoord: 100,
+        systemSize: 'medium',
+        createdAt: new Date(),
+      };
+
+      const entity = toStarEntity(star);
+      expect(entity.game_id).toBe(TEST_GAME_ID);
+    });
+
+    it('should convert GalaxyPlanet to Planet with game_id', () => {
+      const planet: GalaxyPlanet = {
+        id: 'test-id',
+        gameId: TEST_GAME_ID,
+        starId: 'star-id',
+        name: 'Test Planet',
+        planetType: 'terrestrial',
+        size: 'medium',
+        resources: { minerals: 5 },
+        habitable: true,
+        createdAt: new Date(),
+      };
+
+      const entity = toPlanetEntity(planet);
+      expect(entity.game_id).toBe(TEST_GAME_ID);
+    });
+
+    it('should convert GalaxyStarLane to StarLane with game_id', () => {
+      const lane: GalaxyStarLane = {
+        id: 'test-id',
+        gameId: TEST_GAME_ID,
+        sourceStarId: 'star-1',
+        destinationStarId: 'star-2',
+        distance: 100,
+        createdAt: new Date(),
+      };
+
+      const entity = toStarLaneEntity(lane);
+      expect(entity.game_id).toBe(TEST_GAME_ID);
+    });
   });
 });

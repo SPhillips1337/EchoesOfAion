@@ -56,6 +56,7 @@ const SYSTEM_SIZE_WEIGHTS: [string, number][] = [
  *
  * @param seed - The seed string for deterministic generation
  * @param count - Optional specific count of stars to generate (defaults to random 25-40)
+ * @param gameId - Optional game ID to associate with the generated stars
  * @returns An array of GalaxyStar objects
  *
  * @example
@@ -64,7 +65,7 @@ const SYSTEM_SIZE_WEIGHTS: [string, number][] = [
  * console.log(stars.length); // 25-40
  * ```
  */
-export function generateStarSystems(seed: string, count?: number): GalaxyStar[] {
+export function generateStarSystems(seed: string, gameId: string, count?: number): GalaxyStar[] {
   const rng = createSeededPrng(seed);
 
   // Determine the number of stars to generate
@@ -84,6 +85,7 @@ export function generateStarSystems(seed: string, count?: number): GalaxyStar[] 
 
     const star: GalaxyStar = {
       id: generateUUID(rng),
+      gameId,
       name,
       xCoord: randomInt(rng, GALAXY_BOUNDS.minX, GALAXY_BOUNDS.maxX),
       yCoord: randomInt(rng, GALAXY_BOUNDS.minY, GALAXY_BOUNDS.maxY),

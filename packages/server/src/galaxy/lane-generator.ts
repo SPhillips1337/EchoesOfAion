@@ -23,6 +23,7 @@ const TARGET_LANES_PER_STAR = 1.8;
  *
  * @param stars - Array of GalaxyStar objects representing the star systems
  * @param seed - The seed string for deterministic generation
+ * @param gameId - Optional game ID to associate with the generated star lanes
  * @returns An array of GalaxyStarLane objects representing the connections
  *
  * @example
@@ -32,7 +33,7 @@ const TARGET_LANES_PER_STAR = 1.8;
  * console.log(lanes.length); // Variable, but ensures connectivity
  * ```
  */
-export function generateStarLanes(stars: GalaxyStar[], seed: string): GalaxyStarLane[] {
+export function generateStarLanes(stars: GalaxyStar[], seed: string, gameId: string): GalaxyStarLane[] {
   if (stars.length < 2) {
     return []; // Need at least 2 stars to create a lane
   }
@@ -105,7 +106,7 @@ export function generateStarLanes(stars: GalaxyStar[], seed: string): GalaxyStar
       // Use Union-Find to check if adding this lane would create a cycle
       if (union(connection.source.id, connection.dest.id)) {
         // No cycle, add the lane
-        lanes.push(createLane(connection.source, connection.dest, connection.distance, rng));
+        lanes.push(createLane(connection.source, connection.dest, connection.distance, rng, gameId));
         laneSet.add(laneId);
         laneCount++;
       }
@@ -115,7 +116,7 @@ export function generateStarLanes(stars: GalaxyStar[], seed: string): GalaxyStar
   // Final BFS validation
   if (!isFullyConnected(stars, lanes)) {
     // This shouldn't happen with Kruskal's algorithm, but just in case
-    const additionalLanes = connectDisconnectedComponents(stars, lanes, laneSet, rng);
+    const additionalLanes = connectDisconnectedComponents(stars, lanes, laneSet, rng, gameId);
     lanes.push(...additionalLanes);
   }
 
@@ -153,10 +154,12 @@ function createLane(
   source: GalaxyStar,
   dest: GalaxyStar,
   distance: number,
-  rng: () => number
+  rng: () => number,
+  gameId: string
 ): GalaxyStarLane {
   return {
     id: generateLaneUUID(rng),
+    gameId,
     sourceStarId: source.id,
     destinationStarId: dest.id,
     distance: Math.round(distance * 100) / 100, // Round to 2 decimal places
@@ -254,7 +257,8 @@ function connectDisconnectedComponents(
   stars: GalaxyStar[],
   lanes: GalaxyStarLane[],
   laneSet: Set<string>,
-  rng: () => number
+  rng: () => number,
+  gameId: string
 ): GalaxyStarLane[] {
   const newLanes: GalaxyStarLane[] = [];
 
@@ -327,7 +331,7 @@ function connectDisconnectedComponents(
       const star2 = stars.find(s => s.id === id2)!;
       const distance = calculateDistance(star1, star2);
 
-      const newLane = createLane(star1, star2, distance, rng);
+      const newLane = createLane(star1, star2, distance, rng, gameId);
       newLanes.push(newLane);
       laneSet.add(laneId);
 

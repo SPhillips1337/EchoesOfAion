@@ -11,13 +11,13 @@ describe('Game State Queries', () => {
     describe('fetchFullGameState', () => {
         it('should return aggregated game state for a given gameId', async () => {
             const mockState = {
-                stars: [{ id: 'star1', name: 'Sol', x_coord: 0, y_coord: 0, system_size: 'medium', created_at: new Date() }],
-                planets: [{ id: 'planet1', star_id: 'star1', name: 'Earth', planet_type: 'terrestrial', size: 'medium', resources: {}, habitable: true, created_at: new Date() }],
-                starLanes: [{ id: 'lane1', source_star_id: 'star1', destination_star_id: 'star2', distance: 10, created_at: new Date() }],
-                empires: [{ id: 'empire1', name: 'Terran', player_type: 'human', color: 'blue', created_at: new Date() }],
-                fleets: [{ id: 'fleet1', empire_id: 'empire1', star_id: 'star1', name: 'Fleet 1', composition: {}, created_at: new Date() }],
-                buildQueues: [{ id: 'bq1', entity_type: 'planet', entity_id: 'planet1', item_type: 'mine', progress: 0, created_at: new Date() }],
-                turnHistory: [{ id: 'th1', empire_id: 'empire1', turn_number: 1, actions: [], resolved_at: null, created_at: new Date() }],
+                stars: [{ id: 'star1', game_id: 'game1', name: 'Sol', x_coord: 0, y_coord: 0, system_size: 'medium', created_at: new Date() }],
+                planets: [{ id: 'planet1', game_id: 'game1', star_id: 'star1', name: 'Earth', planet_type: 'terrestrial', size: 'medium', resources: {}, habitable: true, created_at: new Date() }],
+                starLanes: [{ id: 'lane1', game_id: 'game1', source_star_id: 'star1', destination_star_id: 'star2', distance: 10, created_at: new Date() }],
+                empires: [{ id: 'empire1', game_id: 'game1', name: 'Terran', player_type: 'human', color: 'blue', created_at: new Date() }],
+                fleets: [{ id: 'fleet1', game_id: 'game1', empire_id: 'empire1', star_id: 'star1', name: 'Fleet 1', composition: {}, created_at: new Date() }],
+                buildQueues: [{ id: 'bq1', game_id: 'game1', entity_type: 'planet', entity_id: 'planet1', item_type: 'mine', progress: 0, created_at: new Date() }],
+                turnHistory: [{ id: 'th1', game_id: 'game1', empire_id: 'empire1', turn_number: 1, actions: [], resolved_at: null, created_at: new Date() }],
                 currentTurn: 1,
                 gameId: 'game1',
             };

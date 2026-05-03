@@ -52,6 +52,7 @@ const PLANET_SIZE_WEIGHTS: [string, number][] = [
  *
  * @param star - The GalaxyStar object representing the star system
  * @param seed - The seed string for deterministic generation
+ * @param gameId - Optional game ID to associate with the generated planets
  * @returns An array of GalaxyPlanet objects (1-4 planets per system)
  *
  * @example
@@ -61,7 +62,7 @@ const PLANET_SIZE_WEIGHTS: [string, number][] = [
  * console.log(planets.length); // 1-4
  * ```
  */
-export function generatePlanetsForSystem(star: GalaxyStar, seed: string): GalaxyPlanet[] {
+export function generatePlanetsForSystem(star: GalaxyStar, seed: string, gameId: string): GalaxyPlanet[] {
   // Create a per-star seed by combining the galaxy seed with the star's ID
   const perStarSeed = `${seed}-${star.id}`;
   const rng = createSeededPrng(perStarSeed);
@@ -94,6 +95,7 @@ export function generatePlanetsForSystem(star: GalaxyStar, seed: string): Galaxy
 
     const planet: GalaxyPlanet = {
       id: generatePlanetUUID(rng),
+      gameId,
       starId: star.id,
       name: generatePlanetName(star.name, i + 1),
       planetType,

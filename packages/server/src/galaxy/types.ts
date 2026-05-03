@@ -25,7 +25,7 @@ import { Star, Planet, StarLane } from '../types/game-entities';
  */
 export interface GalaxyStar {
   id: string;
-  gameId?: string;
+  gameId: string;
   name: string;
   xCoord: number;
   yCoord: number;
@@ -49,7 +49,7 @@ export interface GalaxyStar {
  */
 export interface GalaxyPlanet {
   id: string;
-  gameId?: string;
+  gameId: string;
   starId: string;
   name: string;
   planetType: 'terrestrial' | 'gas_giant' | 'ice' | 'desert' | 'ocean';
@@ -72,7 +72,7 @@ export interface GalaxyPlanet {
  */
 export interface GalaxyStarLane {
   id: string;
-  gameId?: string;
+  gameId: string;
   sourceStarId: string;
   destinationStarId: string;
   distance: number;
