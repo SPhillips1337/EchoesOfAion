@@ -1,4 +1,5 @@
 import { FullGameState, VisibleGameState } from '../types/game-state';
+import { Planet } from '../types/game-entities';
 import { fetchEmpireExploredSystems } from '../db/queries/game-state.queries';
 
 export class VisibilityService {
