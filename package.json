@@ -1,0 +1,8 @@
+{
+  "name": "echoes-of-aion",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "test": "pnpm -r test"
+  }
+}

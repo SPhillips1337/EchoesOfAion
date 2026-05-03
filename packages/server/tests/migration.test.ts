@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Pool } from 'pg';
-import { TABLES, COLUMNS, EntityTypeMap } from '../src/db/schema';
+import { TABLES, COLUMNS } from '../src/db/schema';
 import {
     Star,
     Planet,
@@ -13,23 +13,31 @@ import {
     TurnHistory
 } from '../src/types/game-entities';
 
-// Skip tests if no DATABASE_URL is provided or PostgreSQL is unavailable
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/test_echoes_of_aion'
-});
+const DATABASE_URL = process.env.DATABASE_URL;
 
-async function runMigration() {
-    const migrationSQL = await import('fs').then(fs => fs.promises.readFile(
-        require.resolve('../migrations/001_initial_game_schema.sql'),
-        'utf-8'
-    ));
-    await pool.query(migrationSQL);
-}
-
-describe('Database Migration (001_initial_game_schema.sql)', () => {
+// Use describe.skip if no DATABASE_URL is available
+(DATABASE_URL ? describe : describe.skip)('Database Migration (001_initial_game_schema.sql)', () => {
     let dbAvailable = false;
+    let pool: Pool;
+    
+    async function runMigration() {
+        const migrationSQL = await import('fs').then(fs => fs.promises.readFile(
+            require.resolve('../migrations/001_initial_game_schema.sql'),
+            'utf-8'
+        ));
+        await pool.query(migrationSQL);
+    }
     
     beforeAll(async () => {
+        // If no DATABASE_URL, skip silently
+        if (!DATABASE_URL) {
+            return;
+        }
+        
+        pool = new Pool({
+            connectionString: DATABASE_URL
+        });
+        
         // Check if database is available
         try {
             await pool.query('SELECT 1');
@@ -56,19 +64,14 @@ describe('Database Migration (001_initial_game_schema.sql)', () => {
         await runMigration();
     }, 30000);
     
-    beforeEach(() => {
-        if (!dbAvailable) {
-            return skip();
-        }
-    });
-
     afterAll(async () => {
-        if (dbAvailable) {
+        if (dbAvailable && pool) {
             await pool.end();
         }
     });
 
     it('should create all required tables', async () => {
+        if (!dbAvailable) return;
         const res = await pool.query(`
             SELECT table_name 
             FROM information_schema.tables 
@@ -76,11 +79,12 @@ describe('Database Migration (001_initial_game_schema.sql)', () => {
             AND table_type = 'BASE TABLE'
             ORDER BY table_name;
         `);
-        const tableNames = res.rows.map(r => r.table_name);
+        const tableNames = res.rows.map((r: any) => r.table_name);
         expect(tableNames).toEqual(expect.arrayContaining(Object.values(TABLES)));
     });
 
     it('should insert and retrieve a star', async () => {
+        if (!dbAvailable) return;
         const res = await pool.query(`
             INSERT INTO ${TABLES.STARS} (name, x_coord, y_coord, system_size)
             VALUES ('Sol', 100.5, 200.75, 'medium')
@@ -91,6 +95,7 @@ describe('Database Migration (001_initial_game_schema.sql)', () => {
     });
 
     it('should enforce foreign key constraint on planets.star_id', async () => {
+        if (!dbAvailable) return;
         const starRes = await pool.query(`
             INSERT INTO ${TABLES.STARS} (name, x_coord, y_coord, system_size)
             VALUES ('Alpha Centauri', 300, 400, 'large')
@@ -105,13 +110,13 @@ describe('Database Migration (001_initial_game_schema.sql)', () => {
         `, [starId]);
         expect(planetRes.rows[0].star_id).toBe(starId);
 
-        // Test cascade delete
         await pool.query(`DELETE FROM ${TABLES.STARS} WHERE id = $1`, [starId]);
         const deletedPlanet = await pool.query(`SELECT * FROM ${TABLES.PLANETS} WHERE star_id = $1`, [starId]);
         expect(deletedPlanet.rows.length).toBe(0);
     });
 
     it('should handle JSONB columns for planets.resources', async () => {
+        if (!dbAvailable) return;
         const starRes = await pool.query(`
             INSERT INTO ${TABLES.STARS} (name, x_coord, y_coord, system_size)
             VALUES ('Sirius', 500, 600, 'small')
@@ -131,6 +136,7 @@ describe('Database Migration (001_initial_game_schema.sql)', () => {
     });
 
     it('should enforce CHECK constraint on empires.player_type', async () => {
+        if (!dbAvailable) return;
         await expect(pool.query(`
             INSERT INTO ${TABLES.EMPIRES} (name, player_type, color)
             VALUES ('Test Empire', 'invalid', 'red')
@@ -138,7 +144,6 @@ describe('Database Migration (001_initial_game_schema.sql)', () => {
     });
 
     describe('Schema-Entity Model Validation', () => {
-        // Helper to get column info for a table
         async function getTableColumns(tableName: string) {
             const res = await pool.query(
                 `SELECT column_name, data_type, is_nullable 
@@ -149,33 +154,18 @@ describe('Database Migration (001_initial_game_schema.sql)', () => {
             return res.rows;
         }
 
-        // Helper to check if PG type is compatible with TS type
-        function isTypeCompatible(pgType: string, tsType: string): boolean {
-            const typeMap: Record<string, string[]> = {
-                'uuid': ['string'],
-                'character varying': ['string'],
-                'numeric': ['number'],
-                'text': ['string'],
-                'jsonb': ['object', 'Record', 'unknown[]'],
-                'boolean': ['boolean'],
-                'timestamp with time zone': ['Date', 'Date|null', 'Date|undefined'],
-                'integer': ['number']
-            };
-            const compatibleTsTypes = typeMap[pgType] || [];
-            return compatibleTsTypes.some(t => tsType.includes(t));
-        }
-
         it('should have all expected columns for each table matching schema.ts', async () => {
+            if (!dbAvailable) return;
             for (const [tableKey, tableName] of Object.entries(TABLES)) {
                 const expectedColumns = COLUMNS[tableKey as keyof typeof COLUMNS];
-                const actualColumns = await getTableColumns(tableName);
-                const actualColumnNames = actualColumns.map(c => c.column_name);
-                
+                const actualColumns = await getTableColumns(tableName as string);
+                const actualColumnNames = actualColumns.map((c: any) => c.column_name);
                 expect(actualColumnNames.sort()).toEqual(expectedColumns.sort());
             }
         });
 
         it('should have entity properties matching table columns', async () => {
+            if (!dbAvailable) return;
             const entityMap: Record<string, any> = {
                 [TABLES.STARS]: Star,
                 [TABLES.PLANETS]: Planet,
@@ -189,11 +179,9 @@ describe('Database Migration (001_initial_game_schema.sql)', () => {
             };
 
             for (const [tableName, Entity] of Object.entries(entityMap)) {
-                const columns = await getTableColumns(tableName);
-                const entityProps = Object.keys(new Entity()); // Get property names
-                
-                // Check that all entity properties (except maybe methods) are present as columns
-                const columnNames = columns.map(c => c.column_name);
+                const columns = await getTableColumns(tableName as string);
+                const entityProps = Object.keys(new Entity());
+                const columnNames = columns.map((c: any) => c.column_name);
                 for (const prop of entityProps) {
                     expect(columnNames).toContain(prop);
                 }
@@ -201,27 +189,19 @@ describe('Database Migration (001_initial_game_schema.sql)', () => {
         });
 
         it('should have compatible data types between schema and entities', async () => {
-            const typeMapping: Record<string, string> = {
-                [TABLES.STARS]: 'Star',
-                [TABLES.PLANETS]: 'Planet',
-                // Add more as needed, but for brevity, check key ones
-            };
-
-            // Check Star entity: x_coord (numeric -> number), y_coord (numeric -> number)
+            if (!dbAvailable) return;
             const starColumns = await getTableColumns(TABLES.STARS);
-            const xCoordCol = starColumns.find(c => c.column_name === 'x_coord');
+            const xCoordCol = starColumns.find((c: any) => c.column_name === 'x_coord');
             expect(xCoordCol.data_type).toBe('numeric');
             
-            const yCoordCol = starColumns.find(c => c.column_name === 'y_coord');
+            const yCoordCol = starColumns.find((c: any) => c.column_name === 'y_coord');
             expect(yCoordCol.data_type).toBe('numeric');
             
-            // Check Planet resources (jsonb -> Record<string, number>)
             const planetColumns = await getTableColumns(TABLES.PLANETS);
-            const resourcesCol = planetColumns.find(c => c.column_name === 'resources');
+            const resourcesCol = planetColumns.find((c: any) => c.column_name === 'resources');
             expect(resourcesCol.data_type).toBe('jsonb');
             
-            // Check boolean column
-            const habitableCol = planetColumns.find(c => c.column_name === 'habitable');
+            const habitableCol = planetColumns.find((c: any) => c.column_name === 'habitable');
             expect(habitableCol.data_type).toBe('boolean');
         });
     });
