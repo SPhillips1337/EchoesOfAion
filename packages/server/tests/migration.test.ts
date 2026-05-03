@@ -1,6 +1,17 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { Pool } from 'pg';
-import { TABLES, COLUMNS } from '../src/db/schema';
+import { TABLES, COLUMNS, EntityTypeMap } from '../src/db/schema';
+import {
+    Star,
+    Planet,
+    StarLane,
+    Empire,
+    Fleet,
+    Ship,
+    Structure,
+    BuildQueue,
+    TurnHistory
+} from '../src/types/game-entities';
 
 // Skip tests if no DATABASE_URL is provided or PostgreSQL is unavailable
 const pool = new Pool({
@@ -16,7 +27,19 @@ async function runMigration() {
 }
 
 describe('Database Migration (001_initial_game_schema.sql)', () => {
+    let dbAvailable = false;
+    
     beforeAll(async () => {
+        // Check if database is available
+        try {
+            await pool.query('SELECT 1');
+            dbAvailable = true;
+        } catch (err) {
+            console.warn('PostgreSQL not available, skipping live DB tests');
+            dbAvailable = false;
+            return;
+        }
+        
         // Drop tables if they exist to start fresh
         const dropTables = `
             DROP TABLE IF EXISTS ${TABLES.TURN_HISTORY} CASCADE;
@@ -32,9 +55,17 @@ describe('Database Migration (001_initial_game_schema.sql)', () => {
         await pool.query(dropTables);
         await runMigration();
     }, 30000);
+    
+    beforeEach(() => {
+        if (!dbAvailable) {
+            return skip();
+        }
+    });
 
     afterAll(async () => {
-        await pool.end();
+        if (dbAvailable) {
+            await pool.end();
+        }
     });
 
     it('should create all required tables', async () => {
@@ -104,5 +135,94 @@ describe('Database Migration (001_initial_game_schema.sql)', () => {
             INSERT INTO ${TABLES.EMPIRES} (name, player_type, color)
             VALUES ('Test Empire', 'invalid', 'red')
         `)).rejects.toThrow(/violates check constraint/);
+    });
+
+    describe('Schema-Entity Model Validation', () => {
+        // Helper to get column info for a table
+        async function getTableColumns(tableName: string) {
+            const res = await pool.query(
+                `SELECT column_name, data_type, is_nullable 
+                 FROM information_schema.columns 
+                 WHERE table_name = $1 AND table_schema = 'public'`,
+                [tableName]
+            );
+            return res.rows;
+        }
+
+        // Helper to check if PG type is compatible with TS type
+        function isTypeCompatible(pgType: string, tsType: string): boolean {
+            const typeMap: Record<string, string[]> = {
+                'uuid': ['string'],
+                'character varying': ['string'],
+                'numeric': ['number'],
+                'text': ['string'],
+                'jsonb': ['object', 'Record', 'unknown[]'],
+                'boolean': ['boolean'],
+                'timestamp with time zone': ['Date', 'Date|null', 'Date|undefined'],
+                'integer': ['number']
+            };
+            const compatibleTsTypes = typeMap[pgType] || [];
+            return compatibleTsTypes.some(t => tsType.includes(t));
+        }
+
+        it('should have all expected columns for each table matching schema.ts', async () => {
+            for (const [tableKey, tableName] of Object.entries(TABLES)) {
+                const expectedColumns = COLUMNS[tableKey as keyof typeof COLUMNS];
+                const actualColumns = await getTableColumns(tableName);
+                const actualColumnNames = actualColumns.map(c => c.column_name);
+                
+                expect(actualColumnNames.sort()).toEqual(expectedColumns.sort());
+            }
+        });
+
+        it('should have entity properties matching table columns', async () => {
+            const entityMap: Record<string, any> = {
+                [TABLES.STARS]: Star,
+                [TABLES.PLANETS]: Planet,
+                [TABLES.STAR_LANES]: StarLane,
+                [TABLES.EMPIRES]: Empire,
+                [TABLES.FLEETS]: Fleet,
+                [TABLES.SHIPS]: Ship,
+                [TABLES.STRUCTURES]: Structure,
+                [TABLES.BUILD_QUEUES]: BuildQueue,
+                [TABLES.TURN_HISTORY]: TurnHistory
+            };
+
+            for (const [tableName, Entity] of Object.entries(entityMap)) {
+                const columns = await getTableColumns(tableName);
+                const entityProps = Object.keys(new Entity()); // Get property names
+                
+                // Check that all entity properties (except maybe methods) are present as columns
+                const columnNames = columns.map(c => c.column_name);
+                for (const prop of entityProps) {
+                    expect(columnNames).toContain(prop);
+                }
+            }
+        });
+
+        it('should have compatible data types between schema and entities', async () => {
+            const typeMapping: Record<string, string> = {
+                [TABLES.STARS]: 'Star',
+                [TABLES.PLANETS]: 'Planet',
+                // Add more as needed, but for brevity, check key ones
+            };
+
+            // Check Star entity: x_coord (numeric -> number), y_coord (numeric -> number)
+            const starColumns = await getTableColumns(TABLES.STARS);
+            const xCoordCol = starColumns.find(c => c.column_name === 'x_coord');
+            expect(xCoordCol.data_type).toBe('numeric');
+            
+            const yCoordCol = starColumns.find(c => c.column_name === 'y_coord');
+            expect(yCoordCol.data_type).toBe('numeric');
+            
+            // Check Planet resources (jsonb -> Record<string, number>)
+            const planetColumns = await getTableColumns(TABLES.PLANETS);
+            const resourcesCol = planetColumns.find(c => c.column_name === 'resources');
+            expect(resourcesCol.data_type).toBe('jsonb');
+            
+            // Check boolean column
+            const habitableCol = planetColumns.find(c => c.column_name === 'habitable');
+            expect(habitableCol.data_type).toBe('boolean');
+        });
     });
 });

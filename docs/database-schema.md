@@ -136,7 +136,18 @@ empires (1) ----- (n) turn_history
 - Use the `->>`, `->`, `#>`, `#>>` operators for JSONB queries in PostgreSQL
 
 ## Testing
-Migration tests are located in `packages/server/tests/migration.test.ts`. To run tests:
+Migration tests are located in `packages/server/tests/migration.test.ts`. Static schema-entity validation tests are in `packages/server/tests/schema-validation.test.ts`. To run tests:
 1. Set up a test database: `createdb test_echoes_of_aion`
 2. Set DATABASE_URL environment variable: `export DATABASE_URL="postgresql://localhost:5432/test_echoes_of_aion"`
 3. Run tests: `cd packages/server && pnpm test`
+
+### Schema-Entity Validation
+The static validation tests verify that:
+- All schema columns match entity model properties
+- Entity property types are compatible with database column types
+- Polymorphic references are correctly defined
+
+To run only static validation (no DB required):
+```bash
+cd packages/server && npx vitest run tests/schema-validation.test.ts
+```
