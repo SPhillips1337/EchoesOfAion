@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fetchFullGameState, fetchEmpireExploredSystems, fetchTurnHistoryForReconstruction } from '../../src/db/queries/game-state.queries';
-import { Pool } from 'pg';
 
 vi.mock('../../src/db/queries/game-state.queries');
 

@@ -36,7 +36,7 @@ export class VisibilityService {
                 return {
                     ...fleet,
                     composition: {}, // Redact enemy fleet composition
-                } as Fleet;
+                };
             }
             return fleet;
         });
