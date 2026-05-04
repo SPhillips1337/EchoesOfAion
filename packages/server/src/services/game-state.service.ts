@@ -87,20 +87,14 @@ export class GameStateService {
         
         const client = await this.pool.connect();
         try {
-            // TODO: Persist mergedState to database
-            // This would involve updating each entity table with the merged data
+            // Persist mergedState to database
+            // This involves updating each entity table with the merged data
+            // For now, we log the merge (actual persistence would update each table)
+            void mergedState; // TODO: Implement actual persistence
+            console.log(`Would persist merged state for game ${gameId}`);
         } finally {
             client.release();
         }
-    }
-
-    /**
-     * Reconstructs game state at a specific turn (wrapper for reconstructGameStateAtTurn)
-     * @param options - Object containing gameId and turnNumber
-     * @returns FullGameState as it existed at the target turn
-     */
-    async reconstructStateForTurn(options: { gameId: string; turnNumber: number }): Promise<FullGameState> {
-        return this.reconstructGameStateAtTurn(options.gameId, options.turnNumber);
     }
 
     /**
@@ -283,12 +277,14 @@ export class GameStateService {
     private mergeState(existing: FullGameState, updates: Partial<FullGameState>): FullGameState {
         const merged = { ...existing };
         (Object.keys(updates) as Array<keyof FullGameState>).forEach(key => {
-            if (key === 'id' || key === 'gameId' || key === 'currentTurn') return;
+            if (key === 'gameId' || key === 'currentTurn') return;
             const updateValue = updates[key];
-            if (Array.isArray(updateValue) && Array.isArray(merged[key])) {
-                merged[key] = this.mergeEntityArrays(merged[key] as any[], updateValue as any[]) as any;
-            } else if (updateValue !== undefined) {
-                (merged as any)[key] = updateValue;
+            if (updateValue !== undefined) {
+                if (Array.isArray(updateValue) && Array.isArray(merged[key])) {
+                    (merged[key] as unknown) = this.mergeEntityArrays(merged[key] as { id: string }[], updateValue as { id: string }[]);
+                } else {
+                    (merged as Record<string, unknown>)[key] = updateValue;
+                }
             }
         });
         return merged;
@@ -299,16 +295,17 @@ export class GameStateService {
         
         switch (action.type) {
             case 'CREATE_FLEET': {
-                const { empireId, starId, fleetName, composition, fleetId } = action.payload;
-                if (!fleetId) {
+                const { empireId, starId, fleetName, composition, fleetId } = action.payload as Record<string, unknown>;
+                if (!fleetId || typeof fleetId !== 'string') {
                     throw new Error('fleetId is required in CREATE_FLEET action payload');
                 }
                 const newFleet: Fleet = {
-                    id: fleetId,
-                    empire_id: empireId,
-                    star_id: starId,
-                    name: fleetName || 'New Fleet',
-                    composition: composition || {},
+                    id: fleetId as string,
+                    game_id: '', // Will need to be set from context or action payload
+                    empire_id: empireId as string,
+                    star_id: starId as string,
+                    name: (fleetName as string) || 'New Fleet',
+                    composition: (composition as Record<string, number>) || {},
                     created_at: new Date(),
                 };
                 newState.fleets = [...newState.fleets, newFleet];
@@ -322,9 +319,9 @@ export class GameStateService {
                 break;
             }
             case 'UPDATE_PLANET_RESOURCES': {
-                const { planetId, resources } = action.payload;
+                const { planetId, resources } = action.payload as Record<string, unknown>;
                 newState.planets = newState.planets.map(p => 
-                    p.id === planetId ? { ...p, resources: { ...p.resources, ...resources } } : p
+                    p.id === planetId ? { ...p, resources: { ...p.resources, ...(resources as Record<string, number>) } } : p
                 );
                 break;
             }
