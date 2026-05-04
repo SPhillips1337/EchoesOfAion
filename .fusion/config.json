@@ -1,5 +1,5 @@
 {
-  "nextId": 22,
+  "nextId": 19,
   "settings": {
     "globalPause": false,
     "enginePaused": false,
@@ -102,6 +102,7 @@
     "researchMaxConcurrentRuns": 3,
     "researchDefaultTimeout": 300000,
     "researchMaxSourcesPerRun": 20,
-    "researchMaxSynthesisRounds": 2
+    "researchMaxSynthesisRounds": 2,
+    "completionDocumentationMode": "off"
   }
 }

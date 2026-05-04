@@ -1,0 +1,101 @@
+# Dependencies
+node_modules/
+.pnpm-debug.log*
+
+# Environment variables and secrets
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+*.env
+*.env.*
+
+# API keys, credentials, and sensitive configs
+*.key
+*.pem
+*.crt
+*.cer
+*.p12
+*.pfx
+*.pem
+secrets/
+credentials/
+config/secrets.*
+**/secrets.*
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test outputs and coverage
+test_output.txt
+coverage/
+*.lcov
+.nyc_output/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-*
+.vimrc
+.nvim/
+
+# Fusion tasks (project management - may contain sensitive info)
+.fusion/
+
+# Worktrees
+.worktrees/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# TypeScript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Vite cache
+node_modules/.vite/
+.vite/
+
+# Changeset - keep config but ignore generated files if any
+.changeset/README.md
+
+# Misc
+.turbo/
