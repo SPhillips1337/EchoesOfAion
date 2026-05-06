@@ -411,15 +411,26 @@ export class GameStateService {
                 break;
             }
             case 'COLONIZE_PLANET': {
-                const { planetId, empireId } = action.payload as Record<string, unknown>;
+                const { fleetId, planetId } = action.payload as Record<string, unknown>;
+                if (!fleetId || typeof fleetId !== 'string') {
+                    throw new Error('fleetId is required in COLONIZE_PLANET action payload');
+                }
                 if (!planetId || typeof planetId !== 'string') {
                     throw new Error('planetId is required in COLONIZE_PLANET action payload');
                 }
-                if (!empireId || typeof empireId !== 'string') {
-                    throw new Error('empireId is required in COLONIZE_PLANET action payload');
+                // Find the fleet to get its empire_id
+                const fleet = newState.fleets.find(f => f.id === fleetId);
+                if (!fleet) {
+                    throw new Error(`Fleet ${fleetId} not found in game state`);
                 }
-                // In a full implementation, would update planet.colonized_by_empire_id
-                // For now, just validate payload fields are present
+                // Find the planet and update its colonized_by_empire_id
+                const planetExists = newState.planets.some(p => p.id === planetId);
+                if (!planetExists) {
+                    throw new Error(`Planet ${planetId} not found in game state`);
+                }
+                newState.planets = newState.planets.map(p => 
+                    p.id === planetId ? { ...p, colonized_by_empire_id: fleet.empire_id } : p
+                );
                 break;
             }
             case 'CONSTRUCT_SHIP': {

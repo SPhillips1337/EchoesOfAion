@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GameStateService } from '../../src/services/game-state.service';
 import { Pool } from 'pg';
-import type { FullGameState } from '../../src/types/game-state';
+import type { FullGameState, TurnAction } from '../../src/types/game-state';
 
 // Mock the entire pg module
 vi.mock('pg', () => {
@@ -119,5 +119,104 @@ describe('GameStateService (new methods)', () => {
             expect(fetchStateByGameId).toHaveBeenCalledWith(gameId);
             expect(result).toBeDefined();
         });
+    });
+});
+
+describe('GameStateService.applyAction - COLONIZE_PLANET', () => {
+    let service: GameStateService;
+    let initialState: FullGameState;
+
+    beforeEach(() => {
+        service = new GameStateService();
+        initialState = {
+            stars: [],
+            planets: [
+                {
+                    id: 'planet-1',
+                    game_id: 'game-1',
+                    star_id: 'star-1',
+                    name: 'Test Planet',
+                    planet_type: 'terrestrial',
+                    size: 'medium',
+                    resources: { minerals: 100 },
+                    habitable: true,
+                    colonized_by_empire_id: undefined,
+                    created_at: new Date(),
+                },
+            ],
+            starLanes: [],
+            empires: [
+                {
+                    id: 'empire-1',
+                    game_id: 'game-1',
+                    name: 'Test Empire',
+                    player_type: 'human',
+                    color: '#ff0000',
+                    explored_systems: [],
+                    created_at: new Date(),
+                },
+            ],
+            fleets: [
+                {
+                    id: 'fleet-1',
+                    game_id: 'game-1',
+                    empire_id: 'empire-1',
+                    star_id: 'star-1',
+                    name: 'Test Fleet',
+                    composition: { scout: 1 },
+                    created_at: new Date(),
+                },
+            ],
+            buildQueues: [],
+            turnHistory: [],
+            currentTurn: 1,
+            gameId: 'game-1',
+        };
+    });
+
+    it('should successfully colonize a planet', () => {
+        const action: TurnAction = {
+            type: 'COLONIZE_PLANET',
+            payload: {
+                fleetId: 'fleet-1',
+                planetId: 'planet-1',
+            },
+            turnNumber: 1,
+        };
+
+        // Access private method via any cast for testing
+        const result = (service as any).applyAction(initialState, action);
+
+        expect(result.planets[0].colonized_by_empire_id).toBe('empire-1');
+    });
+
+    it('should throw error when fleet not found', () => {
+        const action: TurnAction = {
+            type: 'COLONIZE_PLANET',
+            payload: {
+                fleetId: 'nonexistent-fleet',
+                planetId: 'planet-1',
+            },
+            turnNumber: 1,
+        };
+
+        expect(() => (service as any).applyAction(initialState, action)).toThrow(
+            'Fleet nonexistent-fleet not found in game state'
+        );
+    });
+
+    it('should throw error when planet not found', () => {
+        const action: TurnAction = {
+            type: 'COLONIZE_PLANET',
+            payload: {
+                fleetId: 'fleet-1',
+                planetId: 'nonexistent-planet',
+            },
+            turnNumber: 1,
+        };
+
+        expect(() => (service as any).applyAction(initialState, action)).toThrow(
+            'Planet nonexistent-planet not found in game state'
+        );
     });
 });

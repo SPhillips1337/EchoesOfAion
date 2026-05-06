@@ -114,7 +114,7 @@ interface TurnAction {
 - `MOVE_FLEET`: Moves a fleet to a new star (payload: `fleetId`, `starId`)
 - `UPDATE_PLANET_RESOURCES`: Updates planet resource values (payload: `planetId`, `resources`)
 - `BUILD_STRUCTURE`: Adds a structure to a planet's build queue (payload: `planetId`, `structureType`)
-- `COLONIZE_PLANET`: Colonizes a planet for an empire (payload: `planetId`, `empireId`)
+- `COLONIZE_PLANET`: Colonizes a planet using a fleet (payload: `fleetId`, `planetId`) - updates planet's `colonized_by_empire_id` to the fleet's empire
 - `CONSTRUCT_SHIP`: Adds ships to a fleet's composition (payload: `fleetId`, `shipType`, `quantity`)
 
 ### Validation Rules
@@ -152,6 +152,7 @@ interface TurnAction {
             "size": "medium",
             "resources": { "minerals": 100, "energy": 50 },
             "habitable": true,
+            "colonized_by_empire_id": "empire-uuid-1",  // null or undefined if uncolonized
             "created_at": "2026-05-03T12:00:00Z"
         }
     ],

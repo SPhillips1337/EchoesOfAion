@@ -17,6 +17,7 @@ export interface Planet {
     size: 'small' | 'medium' | 'large';
     resources: Record<string, number>; // JSONB
     habitable: boolean;
+    colonized_by_empire_id?: string; // UUID - optional, null if uncolonized
     created_at: Date;
 }
 
