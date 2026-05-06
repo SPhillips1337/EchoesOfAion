@@ -12,6 +12,7 @@ import {
 } from '../types/game-entities';
 
 // Table name constants
+// Note: games table is now implemented (see migrations/001_create_games_table.sql)
 export const TABLES = {
     STARS: 'stars',
     PLANETS: 'planets',
@@ -40,6 +41,7 @@ export type EntityTypeMap = {
 };
 
 // Column definitions for reference (matches migration)
+// Note: games table columns match the Game interface in types/game-entities.ts
 export const COLUMNS = {
     stars: ['id', 'game_id', 'name', 'x_coord', 'y_coord', 'system_size', 'created_at'],
     planets: ['id', 'game_id', 'star_id', 'name', 'planet_type', 'size', 'resources', 'habitable', 'created_at'],
