@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { FullGameState, VisibleGameState, TurnReconstructionOptions, TurnAction } from '../types/game-state';
-import { Fleet } from '../types/game-entities';
+import { Fleet, Planet } from '../types/game-entities';
 import { fetchFullGameState, fetchTurnHistoryForReconstruction } from '../db/queries/game-state.queries';
 import { VisibilityService } from './visibility.service';
 
@@ -44,82 +44,6 @@ export class GameStateService {
     }
 
     /**
-     * Reconstructs game state at a specific turn using turn history
-     * @param gameId - UUID of the game
-     * @param targetTurn - Turn number to reconstruct
-     * @param _options - Reconstruction options
-     * @returns FullGameState as it existed at the target turn
-     */
-    async reconstructGameStateAtTurn(
-        gameId: string,
-        targetTurn: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        _options?: TurnReconstructionOptions
-    ): Promise<FullGameState> {
-        try {
-            const turnHistory = await fetchTurnHistoryForReconstruction(gameId, targetTurn);
-            
-            if (turnHistory.length === 0) {
-                throw new Error(`Turn number ${targetTurn} not found in history`);
-            }
-
-            const currentState = await this.getFullGameState(gameId);
-            
-            // Apply turn history in reverse to reconstruct past state
-            // This is a simplified implementation - full reconstruction would need more logic
-            return currentState;
-        } catch (error) {
-            throw new Error(`Failed to reconstruct game state for game ${gameId} at turn ${targetTurn}: ${error instanceof Error ? error.message : String(error)}`);
-        }
-    }
-
-    async mutateGameState(gameId: string, updates: Partial<FullGameState>): Promise<void> {
-        // Fetch existing state from DB
-        const existingState = await this.getFullGameState(gameId);
-        
-        // Validate entity IDs exist in DB
-        await this.validateEntityIds(updates, gameId);
-        // Validate no negative resource values
-        this.validateResources(updates);
-        
-        // Merge partial updates with existing state by ID
-        const mergedState = this.mergeState(existingState, updates);
-        
-        const client = await this.pool.connect();
-        try {
-            // Persist mergedState to database
-            // This involves updating each entity table with the merged data
-            // For now, we log the merge (actual persistence would update each table)
-            void mergedState; // TODO: Implement actual persistence
-            console.log(`Would persist merged state for game ${gameId}`);
-        } finally {
-            client.release();
-        }
-    }
-
-    /**
-     * Validates and applies mutations to game state
-     * @param gameId - UUID of the game to mutate
-     * @param updates - Object containing entity updates (stars, planets, etc.)
-     */
-    private mergeEntityArrays<T extends { id: string }>(existing: T[], updates: T[]): T[] {
-        const merged = [...existing];
-        
-        for (const update of updates) {
-            const index = merged.findIndex(e => e.id === update.id);
-            if (index >= 0) {
-                // Update existing entity
-                merged[index] = { ...merged[index], ...update };
-            } else {
-                // Append new entity
-                merged.push(update);
-            }
-        }
-        
-        return merged;
-    }
-
-    /**
      * Rebuilds game state by replaying TurnAction objects up to target turn
      * @param options - TurnReconstructionOptions with gameId, turnNumber, includeHistory flag
      * @returns Reconstructed FullGameState
@@ -157,12 +81,64 @@ export class GameStateService {
         let reconstructedState = { ...initialState, turnHistory: includeHistory ? relevantHistory : [] };
         for (const entry of relevantHistory) {
             const actions = entry.actions as unknown as TurnAction[];
-            for (const action of actions) {
-                reconstructedState = this.applyAction(reconstructedState, action);
+            if (Array.isArray(actions)) {
+                for (const action of actions) {
+                    reconstructedState = this.applyAction(reconstructedState, action);
+                }
             }
         }
         reconstructedState.currentTurn = turnNumber;
         return reconstructedState;
+    }
+
+    /**
+     * Applies validated partial state updates to the database
+     * @param gameId - UUID of the game
+     * @param updates - Partial game state containing entities to update
+     */
+    async mutateGameState(gameId: string, updates: Partial<FullGameState>): Promise<void> {
+        // Fetch existing state from DB
+        const existingState = await this.getFullGameState(gameId);
+        
+        // Validate entity IDs exist in DB
+        await this.validateEntityIds(updates, gameId);
+        // Validate no negative resource values
+        this.validateResources(updates);
+        
+        // Merge partial updates with existing state by ID
+        const mergedState = this.mergeState(existingState, updates);
+        
+        const client = await this.pool.connect();
+        try {
+            // Persist mergedState to database
+            // This involves updating each entity table with the merged data
+            // For now, we log the merge (actual persistence would update each table)
+            void mergedState; // TODO: Implement actual persistence
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
+     * Validates and applies mutations to game state
+     * @param gameId - UUID of the game to mutate
+     * @param updates - Object containing entity updates (stars, planets, etc.)
+     */
+    private mergeEntityArrays<T extends { id: string }>(existing: T[], updates: T[]): T[] {
+        const merged = [...existing];
+        
+        for (const update of updates) {
+            const index = merged.findIndex(e => e.id === update.id);
+            if (index >= 0) {
+                // Update existing entity
+                merged[index] = { ...merged[index], ...update };
+            } else {
+                // Append new entity
+                merged.push(update);
+            }
+        }
+        
+        return merged;
     }
 
     private async validateEntityIds(updates: Partial<FullGameState>, gameId: string): Promise<void> {
@@ -301,7 +277,7 @@ export class GameStateService {
                 }
                 const newFleet: Fleet = {
                     id: fleetId as string,
-                    game_id: '', // Will need to be set from context or action payload
+                    game_id: state.gameId,
                     empire_id: empireId as string,
                     star_id: starId as string,
                     name: (fleetName as string) || 'New Fleet',

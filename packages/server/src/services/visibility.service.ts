@@ -31,7 +31,7 @@ export class VisibilityService {
             fleet.empire_id === empireId || exploredSet.has(fleet.star_id)
         );
 
-        // Redact sensitive data for non-friendly entities (stub for now)
+        // Redact sensitive data for non-friendly entities
         const redactedFleets = visibleFleets.map(fleet => {
             if (fleet.empire_id !== empireId) {
                 return {
@@ -44,8 +44,7 @@ export class VisibilityService {
 
         // Redact unexplored resource values (set to null for non-friendly planets)
         const redactedPlanets = visiblePlanets.map(planet => {
-            const planetStarId = planet.star_id;
-            if (!exploredSet.has(planetStarId)) {
+            if (!exploredSet.has(planet.star_id)) {
                 return { ...planet, resources: null as any } as unknown as Planet; // eslint-disable-line @typescript-eslint/no-explicit-any
             }
             return planet;
@@ -56,7 +55,7 @@ export class VisibilityService {
             planets: redactedPlanets,
             starLanes: visibleStarLanes,
             fleets: redactedFleets,
-            empires: fullState.empires.filter(e => e.id === empireId), // Only show own empire? Or all explored?
+            empires: fullState.empires.filter(e => e.id === empireId), // Only show own empire
             buildQueues: [], // TODO: filter build queues to visible entities
             turnHistory: [], // Turn history not visible in visible state
             currentTurn: fullState.currentTurn,

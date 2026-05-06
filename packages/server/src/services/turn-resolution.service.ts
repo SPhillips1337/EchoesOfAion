@@ -1,12 +1,26 @@
-import { TurnAction } from '../types/game-state';
-import { validateTurnAction } from '../validators/turn-action.validator';
+import { TurnAction, FullGameState } from '../types/game-state';
+import { runTurnPipeline } from '../turn-resolution/turn-pipeline';
+import { validateOrder } from '../turn-resolution/order-validator';
 
 export class TurnResolutionService {
     /**
-     * Validates and resolves a list of turn actions
+     * Orchestrates the resolution of a full game turn
+     * @param initialState - Current state of the game
+     * @param actions - Player/AI actions for the current turn
+     * @returns New game state after resolution
+     */
+    async resolveTurn(initialState: FullGameState, actions: TurnAction[]): Promise<FullGameState> {
+        try {
+            return await runTurnPipeline(initialState, actions);
+        } catch (error) {
+            throw new Error(`Turn resolution failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    /**
+     * Legacy method for validating turn actions (maintained for compatibility)
      * @param actions - Array of TurnAction to resolve
      * @param currentTurn - Current turn number for validation context
-     * @throws Error if any action is invalid
      */
     resolveTurnActions(actions: TurnAction[], currentTurn: number): void {
         if (!Array.isArray(actions)) {
@@ -14,16 +28,11 @@ export class TurnResolutionService {
         }
 
         for (const action of actions) {
-            // Validate the action structure
-            validateTurnAction(action);
-
-            // Validate that the action's turn number matches the current turn
             if (action.turnNumber !== currentTurn) {
                 throw new Error(`TurnAction turnNumber ${action.turnNumber} does not match current turn ${currentTurn}`);
             }
-
-            // Additional resolution logic would go here (e.g., apply action to game state)
-            // This is a placeholder for the actual resolution implementation
+            // Use the new validator
+            validateOrder(action);
         }
     }
 }
