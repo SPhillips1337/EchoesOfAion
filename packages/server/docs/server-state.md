@@ -244,6 +244,61 @@ Located at `packages/server/src/types/game-state.ts`
 - `TurnReconstructionOptions`: Options for state reconstruction
 - `TurnAction`: Shape of actions stored in turn history
 
+## Turn Resolution API (FN-004)
+
+Located at `packages/server/src/routes/turn.routes.ts`
+
+### POST /api/turns/submit
+
+Submits turn actions for resolution and returns the resolved game state.
+
+**Request Body:**
+```json
+{
+    "gameId": "string (UUID)",
+    "empireId": "string (UUID)",
+    "actions": [
+        {
+            "type": "MOVE_FLEET",
+            "payload": {
+                "fleetId": "fleet-uuid",
+                "destinationStarId": "star-uuid"
+            },
+            "turnNumber": 1
+        }
+    ]
+}
+```
+
+**Success Response (200):**
+```json
+{
+    "success": true,
+    "message": "Turn submitted and resolved successfully.",
+    "resolvedState": { ... },  // FullGameState object
+    "turnNumber": 2
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid UUID, missing fields, empty actions array, or invalid TurnAction
+- `404 Not Found`: Game not found
+- `500 Internal Server Error`: Turn resolution failure
+
+**Validation Rules:**
+- `gameId` and `empireId` must be valid UUIDs (format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
+- `actions` must be a non-empty array of `TurnAction` objects
+- Each `TurnAction` must have:
+  - `type`: Valid action type (see Supported Action Types in Turn Reconstruction section)
+  - `payload`: Object with action-specific required fields
+  - `turnNumber`: Positive integer
+
+**Setup:**
+- Express server configured in `packages/server/src/app.ts`
+- Serves static UI files from `packages/client/` at `http://localhost:3000`
+- API routes mounted at `/api` prefix
+- Start server: `cd packages/server && pnpm start`
+
 ## Database Schema Dependencies
 
 Requires the following tables from FN-001:

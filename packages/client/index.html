@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echoes of Aion - Turn Submission</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Echoes of Aion - Turn Submission</h1>
+        
+        <div class="form-section">
+            <h2>Submit Turn Actions</h2>
+            <form id="turnForm">
+                <div class="form-group">
+                    <label for="gameId">Game ID (UUID):</label>
+                    <input type="text" id="gameId" name="gameId" required 
+                           placeholder="e.g., 550e8400-e29b-41d4-a716-446655440000"
+                           pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}">
+                </div>
+
+                <div class="form-group">
+                    <label for="empireId">Empire ID (UUID):</label>
+                    <input type="text" id="empireId" name="empireId" required 
+                           placeholder="e.g., 550e8400-e29b-41d4-a716-446655440001"
+                           pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}">
+                </div>
+
+                <div class="form-group">
+                    <label for="actions">Actions (JSON array):</label>
+                    <textarea id="actions" name="actions" rows="10" required 
+                              placeholder='[
+  {
+    "type": "MOVE_FLEET",
+    "payload": {
+      "fleetId": "fleet-uuid-here",
+      "destinationStarId": "star-uuid-here"
+    },
+    "turnNumber": 1
+  }
+]'></textarea>
+                    <small>Enter a JSON array of TurnAction objects. Each action needs: type, payload (object), and turnNumber (positive integer).</small>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit">Submit Turn</button>
+                    <button type="button" id="clearBtn">Clear Form</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="feedback-section" id="feedbackSection" style="display: none;">
+            <h2>Response</h2>
+            <div id="feedbackContent"></div>
+        </div>
+
+        <div class="help-section">
+            <h3>Valid Action Types:</h3>
+            <ul>
+                <li><strong>MOVE_FLEET</strong>: payload needs <code>fleetId</code>, <code>destinationStarId</code></li>
+                <li><strong>COLONIZE_PLANET</strong>: payload needs <code>fleetId</code>, <code>planetId</code></li>
+                <li><strong>BUILD_STRUCTURE</strong>: payload needs <code>planetId</code>, <code>structureType</code></li>
+                <li><strong>CONSTRUCT_SHIP</strong>: payload needs <code>planetId</code>, <code>shipType</code></li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
