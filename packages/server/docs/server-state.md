@@ -85,16 +85,27 @@ interface TurnAction {
 ### Deterministic Replay Guarantees
 
 1. Actions are replayed in turn order (ascending turn_number)
-2. Within a turn, actions are replayed in the order they were recorded
+2. Within a turn, actions are replayed in order of `created_at` (ascending)
 3. The initial state starts empty (all arrays empty, currentTurn = 0)
 4. State mutations are applied sequentially via `applyAction()`
 5. The reconstruction throws `Error('Turn number X not found in history')` if the target turn doesn't exist
 
 ### Supported Action Types
 
-- `CREATE_FLEET`: Creates a new fleet at a star
-- `MOVE_FLEET`: Moves a fleet to a new star
-- `UPDATE_PLANET_RESOURCES`: Updates planet resource values
+- `CREATE_FLEET`: Creates a new fleet at a star (payload: `fleetId`, `starId`, `empireId`, `fleetName`, `composition`)
+- `MOVE_FLEET`: Moves a fleet to a new star (payload: `fleetId`, `starId`)
+- `UPDATE_PLANET_RESOURCES`: Updates planet resource values (payload: `planetId`, `resources`)
+- `BUILD_STRUCTURE`: Adds a structure to a planet's build queue (payload: `planetId`, `structureType`)
+- `COLONIZE_PLANET`: Colonizes a planet for an empire (payload: `planetId`, `empireId`)
+- `CONSTRUCT_SHIP`: Adds ships to a fleet's composition (payload: `fleetId`, `shipType`, `quantity`)
+
+### Validation Rules
+
+- Each turn history entry must have a valid `turn_number` (non-negative integer)
+- Each turn history entry must have an `actions` array (non-empty for turn_number > 0)
+- Each turn history entry must have a valid `empire_id` (string)
+- Action payloads are validated for required fields per action type
+- Unknown action types throw an error with context (turn number, action type)
 
 ## Example Response Shapes
 

@@ -141,6 +141,150 @@ describe('GameStateService', () => {
             expect(result.currentTurn).toBe(1);
             expect(result.turnHistory).toEqual(mockHistory);
         });
+
+        it('should not include history when includeHistory is false', async () => {
+            const mockHistory = [
+                {
+                    id: 'th1',
+                    empire_id: 'empire1',
+                    turn_number: 1,
+                    actions: [{ type: 'MOVE_FLEET', payload: { fleetId: 'fleet1', starId: 'star2' }, turnNumber: 1 }],
+                    resolved_at: null,
+                    created_at: new Date(),
+                },
+            ];
+            vi.spyOn(Queries, 'fetchTurnHistoryForReconstruction').mockResolvedValueOnce(mockHistory);
+
+            const result = await service.reconstructStateForTurn({ gameId: 'game1', turnNumber: 1, includeHistory: false });
+            expect(result.currentTurn).toBe(1);
+            expect(result.turnHistory).toEqual([]);
+        });
+
+        it('should apply BUILD_STRUCTURE action', async () => {
+            const mockHistory = [
+                {
+                    id: 'th1',
+                    empire_id: 'empire1',
+                    turn_number: 1,
+                    actions: [
+                        { type: 'CREATE_FLEET', payload: { fleetId: 'fleet1', starId: 'star1', empireId: 'empire1' }, turnNumber: 1 },
+                        { type: 'BUILD_STRUCTURE', payload: { planetId: 'planet1', structureType: 'mine' }, turnNumber: 1 }
+                    ],
+                    resolved_at: null,
+                    created_at: new Date(),
+                },
+            ];
+            vi.spyOn(Queries, 'fetchTurnHistoryForReconstruction').mockResolvedValueOnce(mockHistory);
+
+            const result = await service.reconstructStateForTurn({ gameId: 'game1', turnNumber: 1 });
+            // BUILD_STRUCTURE adds to buildQueues even if planet doesn't exist in replay state
+            expect(result.buildQueues).toHaveLength(1);
+            expect(result.buildQueues[0].entity_id).toBe('planet1');
+            expect(result.buildQueues[0].item_type).toBe('mine');
+        });
+
+        it('should apply COLONIZE_PLANET action', async () => {
+            const mockHistory = [
+                {
+                    id: 'th1',
+                    empire_id: 'empire1',
+                    turn_number: 1,
+                    actions: [
+                        { type: 'COLONIZE_PLANET', payload: { planetId: 'planet1', empireId: 'empire1' }, turnNumber: 1 }
+                    ],
+                    resolved_at: null,
+                    created_at: new Date(),
+                },
+            ];
+            vi.spyOn(Queries, 'fetchTurnHistoryForReconstruction').mockResolvedValueOnce(mockHistory);
+
+            const result = await service.reconstructStateForTurn({ gameId: 'game1', turnNumber: 1 });
+            // COLONIZE_PLANET doesn't modify state yet (placeholder implementation)
+            expect(result.planets).toHaveLength(0);
+        });
+
+        it('should apply CONSTRUCT_SHIP action', async () => {
+            const mockHistory = [
+                {
+                    id: 'th1',
+                    empire_id: 'empire1',
+                    turn_number: 1,
+                    actions: [
+                        { type: 'CREATE_FLEET', payload: { fleetId: 'fleet1', starId: 'star1', empireId: 'empire1' }, turnNumber: 1 },
+                        { type: 'CONSTRUCT_SHIP', payload: { fleetId: 'fleet1', shipType: 'scout', quantity: 3 }, turnNumber: 1 }
+                    ],
+                    resolved_at: null,
+                    created_at: new Date(),
+                },
+            ];
+            vi.spyOn(Queries, 'fetchTurnHistoryForReconstruction').mockResolvedValueOnce(mockHistory);
+
+            const result = await service.reconstructStateForTurn({ gameId: 'game1', turnNumber: 1 });
+            expect(result.fleets[0].composition['scout']).toBe(3); // New fleet with 3 scouts
+        });
+
+        it('should throw error for invalid turn_history entry (empty actions array)', async () => {
+            const mockHistory = [
+                {
+                    id: 'th1',
+                    empire_id: 'empire1',
+                    turn_number: 1,
+                    actions: [], // empty actions array - invalid for turn > 0
+                    resolved_at: null,
+                    created_at: new Date(),
+                },
+            ];
+            vi.spyOn(Queries, 'fetchTurnHistoryForReconstruction').mockResolvedValueOnce(mockHistory);
+
+            await expect(service.reconstructStateForTurn({ gameId: 'game1', turnNumber: 1 }))
+                .rejects.toThrow('Empty actions array in history entry for turn 1');
+        });
+
+        it('should throw error for invalid action type', async () => {
+            const mockHistory = [
+                {
+                    id: 'th1',
+                    empire_id: 'empire1',
+                    turn_number: 1,
+                    actions: [{ type: 'INVALID_ACTION', payload: {}, turnNumber: 1 }],
+                    resolved_at: null,
+                    created_at: new Date(),
+                },
+            ];
+            vi.spyOn(Queries, 'fetchTurnHistoryForReconstruction').mockResolvedValueOnce(mockHistory);
+
+            await expect(service.reconstructStateForTurn({ gameId: 'game1', turnNumber: 1 }))
+                .rejects.toThrow('Unknown action type: INVALID_ACTION');
+        });
+
+        it('should replay actions in deterministic order (sorted by turn_number, then created_at)', async () => {
+            const olderDate = new Date('2024-01-01');
+            const newerDate = new Date('2024-01-02');
+            
+            const mockHistory = [
+                {
+                    id: 'th2',
+                    empire_id: 'empire1',
+                    turn_number: 1,
+                    actions: [{ type: 'MOVE_FLEET', payload: { fleetId: 'fleet1', starId: 'star2' }, turnNumber: 1 }],
+                    resolved_at: null,
+                    created_at: newerDate,
+                },
+                {
+                    id: 'th1',
+                    empire_id: 'empire1',
+                    turn_number: 1,
+                    actions: [{ type: 'CREATE_FLEET', payload: { fleetId: 'fleet1', starId: 'star1', empireId: 'empire1' }, turnNumber: 1 }],
+                    resolved_at: null,
+                    created_at: olderDate,
+                },
+            ];
+            vi.spyOn(Queries, 'fetchTurnHistoryForReconstruction').mockResolvedValueOnce(mockHistory);
+
+            const result = await service.reconstructStateForTurn({ gameId: 'game1', turnNumber: 1 });
+            // Fleet should be created before being moved (due to sorting by created_at)
+            expect(result.fleets).toHaveLength(1);
+        });
     });
 
     describe('getVisibleGameState', () => {

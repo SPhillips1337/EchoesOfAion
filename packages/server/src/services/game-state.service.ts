@@ -54,6 +54,27 @@ export class GameStateService {
     }
 
     /**
+     * Validates a turn history entry for required fields
+     * @param entry - TurnHistory entry to validate
+     * @throws Error if entry is invalid
+     */
+    private validateTurnHistoryEntry(entry: { turn_number?: number; actions?: unknown; empire_id?: string }): void {
+        if (typeof entry.turn_number !== 'number' || entry.turn_number < 0) {
+            throw new Error(`Invalid turn_number in history entry: ${entry.turn_number}`);
+        }
+        if (!Array.isArray(entry.actions)) {
+            throw new Error(`Invalid actions in history entry for turn ${entry.turn_number}: expected array`);
+        }
+        // Check for non-empty actions array where applicable (skip turn 0 initialization if needed)
+        if (entry.turn_number > 0 && Array.isArray(entry.actions) && entry.actions.length === 0) {
+            throw new Error(`Empty actions array in history entry for turn ${entry.turn_number}`);
+        }
+        if (!entry.empire_id || typeof entry.empire_id !== 'string') {
+            throw new Error(`Invalid empire_id in history entry for turn ${entry.turn_number}`);
+        }
+    }
+
+    /**
      * Rebuilds game state by replaying TurnAction objects up to target turn
      * @param options - TurnReconstructionOptions with gameId, turnNumber, includeHistory flag
      * @returns Reconstructed FullGameState
@@ -87,13 +108,28 @@ export class GameStateService {
         // Filter history to only include turns up to target
         const relevantHistory = history.filter(h => h.turn_number <= turnNumber);
         
-        // Replay actions deterministically
-        let reconstructedState = { ...initialState, turnHistory: includeHistory ? relevantHistory : [] };
+        // Validate all history entries
         for (const entry of relevantHistory) {
+            this.validateTurnHistoryEntry(entry);
+        }
+        
+        // Sort deterministically: by turn_number ASC, then by created_at ASC
+        const sortedHistory = [...relevantHistory].sort((a, b) => {
+            if (a.turn_number !== b.turn_number) {
+                return a.turn_number - b.turn_number;
+            }
+            const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return aTime - bTime;
+        });
+        
+        // Replay actions deterministically
+        let reconstructedState = { ...initialState, turnHistory: includeHistory ? sortedHistory : [] };
+        for (const entry of sortedHistory) {
             const actions = entry.actions as unknown as TurnAction[];
             if (Array.isArray(actions)) {
                 for (const action of actions) {
-                    reconstructedState = this.applyAction(reconstructedState, action);
+                    reconstructedState = this.applyAction(reconstructedState, action, entry.turn_number);
                 }
             }
         }
@@ -276,7 +312,7 @@ export class GameStateService {
         return merged;
     }
 
-    private applyAction(state: FullGameState, action: TurnAction): FullGameState {
+    private applyAction(state: FullGameState, action: TurnAction, turnNumber?: number): FullGameState {
         const newState = { ...state };
         
         switch (action.type) {
@@ -299,6 +335,12 @@ export class GameStateService {
             }
             case 'MOVE_FLEET': {
                 const { fleetId, starId: destinationStarId } = action.payload as Record<string, unknown>;
+                if (!fleetId || typeof fleetId !== 'string') {
+                    throw new Error('fleetId is required in MOVE_FLEET action payload');
+                }
+                if (!destinationStarId || typeof destinationStarId !== 'string') {
+                    throw new Error('starId is required in MOVE_FLEET action payload');
+                }
                 newState.fleets = newState.fleets.map(f => 
                     f.id === fleetId ? { ...f, star_id: destinationStarId as string } : f
                 );
@@ -306,13 +348,71 @@ export class GameStateService {
             }
             case 'UPDATE_PLANET_RESOURCES': {
                 const { planetId, resources } = action.payload as Record<string, unknown>;
+                if (!planetId || typeof planetId !== 'string') {
+                    throw new Error('planetId is required in UPDATE_PLANET_RESOURCES action payload');
+                }
                 newState.planets = newState.planets.map(p => 
                     p.id === planetId ? { ...p, resources: { ...p.resources, ...(resources as Record<string, number>) } } : p
                 );
                 break;
             }
-            default:
-                throw new Error(`Unknown action type: ${action.type}`);
+            case 'BUILD_STRUCTURE': {
+                const { planetId, structureType } = action.payload as Record<string, unknown>;
+                if (!planetId || typeof planetId !== 'string') {
+                    throw new Error('planetId is required in BUILD_STRUCTURE action payload');
+                }
+                if (!structureType || typeof structureType !== 'string') {
+                    throw new Error('structureType is required in BUILD_STRUCTURE action payload');
+                }
+                // Add to build queue (planet validation skipped for replay from scratch)
+                const newBuildQueue = {
+                    id: `bq-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    game_id: state.gameId,
+                    entity_type: 'planet' as const,
+                    entity_id: planetId as string,
+                    item_type: structureType as string,
+                    progress: 0,
+                    created_at: new Date(),
+                };
+                newState.buildQueues = [...newState.buildQueues, newBuildQueue];
+                break;
+            }
+            case 'COLONIZE_PLANET': {
+                const { planetId, empireId } = action.payload as Record<string, unknown>;
+                if (!planetId || typeof planetId !== 'string') {
+                    throw new Error('planetId is required in COLONIZE_PLANET action payload');
+                }
+                if (!empireId || typeof empireId !== 'string') {
+                    throw new Error('empireId is required in COLONIZE_PLANET action payload');
+                }
+                // In a full implementation, would update planet.colonized_by_empire_id
+                // For now, just validate payload fields are present
+                break;
+            }
+            case 'CONSTRUCT_SHIP': {
+                const { fleetId, shipType, quantity } = action.payload as Record<string, unknown>;
+                if (!fleetId || typeof fleetId !== 'string') {
+                    throw new Error('fleetId is required in CONSTRUCT_SHIP action payload');
+                }
+                if (!shipType || typeof shipType !== 'string') {
+                    throw new Error('shipType is required in CONSTRUCT_SHIP action payload');
+                }
+                const shipsToAdd = (quantity as number) || 1;
+                newState.fleets = newState.fleets.map(f => {
+                    if (f.id === fleetId) {
+                        const newComposition = { ...f.composition };
+                        newComposition[shipType as string] = (newComposition[shipType as string] || 0) + shipsToAdd;
+                        return { ...f, composition: newComposition };
+                    }
+                    return f;
+                });
+                break;
+            }
+            default: {
+                const errorMsg = `Unknown action type: ${action.type} at turn ${turnNumber || action.turnNumber}`;
+                console.error(errorMsg, action);
+                throw new Error(errorMsg);
+            }
         }
         
         return newState;
