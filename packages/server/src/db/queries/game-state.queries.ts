@@ -13,8 +13,11 @@ const pool = new Pool({
 export async function fetchFullGameState(gameId: string): Promise<FullGameState> {
     const client = await pool.connect();
     try {
-        // Fetch all entities for the game (assumes game_id column exists on all tables per FN-002)
-        const starsRes = await client.query<Star>('SELECT * FROM stars WHERE game_id = $1', [gameId]);
+        // Fetch all entities for the game using explicit games table JOINs per FN-005 FK relationships
+        const starsRes = await client.query<Star>(
+            'SELECT s.* FROM stars s INNER JOIN games g ON s.game_id = g.id WHERE g.id = $1',
+            [gameId]
+        );
         const starIds = starsRes.rows.map(s => s.id);
         if (starIds.length === 0) {
             return {
@@ -29,14 +32,39 @@ export async function fetchFullGameState(gameId: string): Promise<FullGameState>
                 gameId,
             };
         }
-        const planetsRes = await client.query<Planet>('SELECT * FROM planets WHERE star_id = ANY($1)', [starIds]);
-        const starLanesRes = await client.query<StarLane>('SELECT * FROM star_lanes WHERE source_star_id = ANY($1) OR destination_star_id = ANY($1)', [starIds]);
-        const empiresRes = await client.query<Empire>('SELECT * FROM empires WHERE game_id = $1', [gameId]);
-        const empireIds = empiresRes.rows.map(e => e.id);
-        const fleetsRes = await client.query<Fleet>('SELECT * FROM fleets WHERE empire_id = ANY($1)', [empireIds]);
-        const fleetIds = fleetsRes.rows.map(f => f.id);
-        const buildQueuesRes = await client.query<BuildQueue>('SELECT * FROM build_queues WHERE (entity_type = $1 AND entity_id = ANY($2)) OR (entity_type = $3 AND entity_id = ANY($4))', ['planet', planetsRes.rows.map(p => p.id), 'fleet', fleetIds]);
-        const turnHistoryRes = await client.query<TurnHistory>('SELECT th.* FROM turn_history th INNER JOIN empires e ON th.empire_id = e.id WHERE e.game_id = $1 ORDER BY th.turn_number ASC', [gameId]);
+        const planetsRes = await client.query<Planet>(
+            'SELECT p.* FROM planets p INNER JOIN stars s ON p.star_id = s.id INNER JOIN games g ON s.game_id = g.id WHERE g.id = $1',
+            [gameId]
+        );
+        const starLanesRes = await client.query<StarLane>(
+            'SELECT sl.* FROM star_lanes sl INNER JOIN stars s1 ON sl.source_star_id = s1.id INNER JOIN stars s2 ON sl.destination_star_id = s2.id INNER JOIN games g ON s1.game_id = g.id WHERE g.id = $1',
+            [gameId]
+        );
+        const empiresRes = await client.query<Empire>(
+            'SELECT e.* FROM empires e INNER JOIN games g ON e.game_id = g.id WHERE g.id = $1',
+            [gameId]
+        );
+        const fleetsRes = await client.query<Fleet>(
+            'SELECT f.* FROM fleets f INNER JOIN empires e ON f.empire_id = e.id INNER JOIN games g ON e.game_id = g.id WHERE g.id = $1',
+            [gameId]
+        );
+        const buildQueuesRes = await client.query<BuildQueue>(
+            `SELECT bq.* FROM build_queues bq
+             LEFT JOIN planets p ON bq.entity_type = 'planet' AND bq.entity_id = p.id
+             LEFT JOIN fleets f ON bq.entity_type = 'fleet' AND bq.entity_id = f.id
+             LEFT JOIN empires e ON p.game_id = e.game_id OR f.empire_id = e.id
+             INNER JOIN games g ON e.game_id = g.id
+             WHERE g.id = $1`,
+            [gameId]
+        );
+        const turnHistoryRes = await client.query<TurnHistory>(
+            `SELECT th.* FROM turn_history th
+             INNER JOIN empires e ON th.empire_id = e.id
+             INNER JOIN games g ON e.game_id = g.id
+             WHERE g.id = $1
+             ORDER BY th.turn_number ASC`,
+            [gameId]
+        );
         
         // Placeholder for current turn (would come from games table in future per FN-002)
         const currentTurn = 1;
@@ -55,6 +83,11 @@ export async function fetchFullGameState(gameId: string): Promise<FullGameState>
     } finally {
         client.release();
     }
+}
+
+export async function fetchStateByGameId(gameId: string): Promise<FullGameState> {
+    // Leverages explicit games table JOINs already implemented in fetchFullGameState
+    return fetchFullGameState(gameId);
 }
 
 export async function fetchEmpireExploredSystems(empireId: string): Promise<string[]> {
@@ -76,7 +109,8 @@ export async function fetchTurnHistoryForReconstruction(gameId: string, upToTurn
         const result = await client.query<TurnHistory>(
             `SELECT th.* FROM turn_history th
              INNER JOIN empires e ON th.empire_id = e.id
-             WHERE e.game_id = $1 AND th.turn_number <= $2
+             INNER JOIN games g ON e.game_id = g.id
+             WHERE g.id = $1 AND th.turn_number <= $2
              ORDER BY th.turn_number ASC`,
             [gameId, upToTurn]
         );

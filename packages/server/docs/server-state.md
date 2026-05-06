@@ -14,6 +14,9 @@ Located at `packages/server/src/services/game-state.service.ts`
 class GameStateService {
     constructor(pool?: Pool);
 
+    // Fetch full game state by game ID using FK-compliant queries
+    async fetchStateByGameId(gameId: string): Promise<FullGameState>;
+
     // Fetch full unfiltered game state
     async getFullGameState(gameId: string): Promise<FullGameState>;
 
@@ -37,6 +40,21 @@ class VisibilityService {
     // Filter full game state to only include entities visible to the specified empire
     async filterVisibleState(empireId: string, fullState: FullGameState): Promise<VisibleGameState>;
 }
+```
+
+## Query Functions
+
+Located at `packages/server/src/db/queries/game-state.queries.ts`
+
+```typescript
+// Fetch full game state using explicit games table FK JOINs
+export async function fetchFullGameState(gameId: string): Promise<FullGameState>;
+
+// Fetch full game state by game ID (wraps fetchFullGameState with FK-compliant queries)
+export async function fetchStateByGameId(gameId: string): Promise<FullGameState>;
+
+// Fetch turn history for state reconstruction
+export async function fetchTurnHistoryForReconstruction(gameId: string, upToTurn: number): Promise<TurnHistory[]>;
 ```
 
 ## Visibility Filtering Rules
@@ -201,14 +219,20 @@ Same shape as `FullGameState`, but with filtered arrays:
 
 ## Query Functions
 
+All query functions use explicit `games` table foreign key JOINs per FN-005 relationships to ensure data integrity. This replaces direct `game_id` filtering with explicit INNER JOINs to the `games` table.
+
 Located at `packages/server/src/db/queries/game-state.queries.ts`
 
 ```typescript
-// Fetch full game state with all entities joined by game_id
-async function fetchFullGameState(gameId: string): Promise<FullGameState>;
+// Fetch full game state using explicit games table FK JOINs
+export async function fetchFullGameState(gameId: string): Promise<FullGameState>;
 
-// Fetch explored system IDs for an empire (defaults to empty array if null)
-async function fetchEmpireExploredSystems(empireId: string): Promise<string[]>;
+// Fetch full game state by game ID (wraps fetchFullGameState with FK-compliant queries)
+export async function fetchStateByGameId(gameId: string): Promise<FullGameState>;
+
+// Fetch turn history for state reconstruction
+export async function fetchTurnHistoryForReconstruction(gameId: string, upToTurn: number): Promise<TurnHistory[]>;
+```
 
 // Fetch turn history entries up to a specific turn for state reconstruction
 async function fetchTurnHistoryForReconstruction(

@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { FullGameState, VisibleGameState, TurnReconstructionOptions, TurnAction } from '../types/game-state';
 import { Fleet } from '../types/game-entities';
-import { fetchFullGameState, fetchTurnHistoryForReconstruction } from '../db/queries/game-state.queries';
+import { fetchStateByGameId, fetchTurnHistoryForReconstruction } from '../db/queries/game-state.queries';
 import { VisibilityService } from './visibility.service';
 
 export class GameStateService {
@@ -20,6 +20,15 @@ export class GameStateService {
     }
 
     /**
+     * Fetches full game state by game ID using FK-compliant queries
+     * @param gameId - UUID of the game to fetch state for
+     * @returns FullGameState with all entities
+     */
+    async fetchStateByGameId(gameId: string): Promise<FullGameState> {
+        return fetchStateByGameId(gameId);
+    }
+
+    /**
      * Fetches full unfiltered game state for a game
      * @param gameId - UUID of the game to fetch state for
      * @returns FullGameState with all entities
@@ -35,7 +44,7 @@ export class GameStateService {
         } finally {
             client.release();
         }
-        return fetchFullGameState(gameId);
+        return this.fetchStateByGameId(gameId);
     }
 
     /**
@@ -46,7 +55,7 @@ export class GameStateService {
      */
     async getVisibleGameState(empireId: string, gameId: string): Promise<VisibleGameState> {
         try {
-            const fullState = await this.getFullGameState(gameId);
+            const fullState = await this.fetchStateByGameId(gameId);
             return this.visibilityService.filterVisibleState(empireId, fullState);
         } catch (error) {
             throw new Error(`Failed to get visible state for empire ${empireId} in game ${gameId}: ${error instanceof Error ? error.message : String(error)}`);
@@ -195,7 +204,10 @@ export class GameStateService {
                     if (!star.id || typeof star.id !== 'string') {
                         throw new Error(`Invalid ID for star entity`);
                     }
-                    const result = await client.query('SELECT id FROM stars WHERE id = $1 AND game_id = $2', [star.id, gameId]);
+                    const result = await client.query(
+                        'SELECT s.id FROM stars s INNER JOIN games g ON s.game_id = g.id WHERE s.id = $1 AND g.id = $2',
+                        [star.id, gameId]
+                    );
                     if (result.rowCount === 0) {
                         throw new Error(`Star ID ${star.id} not found in database or not in game ${gameId}`);
                     }
@@ -207,12 +219,18 @@ export class GameStateService {
                     if (!planet.id || typeof planet.id !== 'string') {
                         throw new Error(`Invalid ID for planet entity`);
                     }
-                    const result = await client.query('SELECT p.id FROM planets p INNER JOIN stars s ON p.star_id = s.id WHERE p.id = $1 AND s.game_id = $2', [planet.id, gameId]);
+                    const result = await client.query(
+                        'SELECT p.id FROM planets p INNER JOIN stars s ON p.star_id = s.id INNER JOIN games g ON s.game_id = g.id WHERE p.id = $1 AND g.id = $2',
+                        [planet.id, gameId]
+                    );
                     if (result.rowCount === 0) {
                         throw new Error(`Planet ID ${planet.id} not found in database or not in game ${gameId}`);
                     }
                     if (planet.star_id) {
-                        const starResult = await client.query('SELECT id FROM stars WHERE id = $1 AND game_id = $2', [planet.star_id, gameId]);
+                        const starResult = await client.query(
+                            'SELECT s.id FROM stars s INNER JOIN games g ON s.game_id = g.id WHERE s.id = $1 AND g.id = $2',
+                            [planet.star_id, gameId]
+                        );
                         if (starResult.rowCount === 0) {
                             throw new Error(`Planet star_id ${planet.star_id} does not reference a valid star in game ${gameId}`);
                         }
@@ -225,18 +243,27 @@ export class GameStateService {
                     if (!fleet.id || typeof fleet.id !== 'string') {
                         throw new Error(`Invalid ID for fleet entity`);
                     }
-                    const result = await client.query('SELECT f.id FROM fleets f INNER JOIN empires e ON f.empire_id = e.id WHERE f.id = $1 AND e.game_id = $2', [fleet.id, gameId]);
+                    const result = await client.query(
+                        'SELECT f.id FROM fleets f INNER JOIN empires e ON f.empire_id = e.id INNER JOIN games g ON e.game_id = g.id WHERE f.id = $1 AND g.id = $2',
+                        [fleet.id, gameId]
+                    );
                     if (result.rowCount === 0) {
                         throw new Error(`Fleet ID ${fleet.id} not found in database or not in game ${gameId}`);
                     }
                     if (fleet.empire_id) {
-                        const empireResult = await client.query('SELECT id FROM empires WHERE id = $1 AND game_id = $2', [fleet.empire_id, gameId]);
+                        const empireResult = await client.query(
+                            'SELECT e.id FROM empires e INNER JOIN games g ON e.game_id = g.id WHERE e.id = $1 AND g.id = $2',
+                            [fleet.empire_id, gameId]
+                        );
                         if (empireResult.rowCount === 0) {
                             throw new Error(`Fleet empire_id ${fleet.empire_id} does not reference a valid empire in game ${gameId}`);
                         }
                     }
                     if (fleet.star_id) {
-                        const starResult = await client.query('SELECT id FROM stars WHERE id = $1 AND game_id = $2', [fleet.star_id, gameId]);
+                        const starResult = await client.query(
+                            'SELECT s.id FROM stars s INNER JOIN games g ON s.game_id = g.id WHERE s.id = $1 AND g.id = $2',
+                            [fleet.star_id, gameId]
+                        );
                         if (starResult.rowCount === 0) {
                             throw new Error(`Fleet star_id ${fleet.star_id} does not reference a valid star in game ${gameId}`);
                         }
@@ -249,7 +276,10 @@ export class GameStateService {
                     if (!empire.id || typeof empire.id !== 'string') {
                         throw new Error(`Invalid ID for empire entity`);
                     }
-                    const result = await client.query('SELECT id FROM empires WHERE id = $1 AND game_id = $2', [empire.id, gameId]);
+                    const result = await client.query(
+                        'SELECT e.id FROM empires e INNER JOIN games g ON e.game_id = g.id WHERE e.id = $1 AND g.id = $2',
+                        [empire.id, gameId]
+                    );
                     if (result.rowCount === 0) {
                         throw new Error(`Empire ID ${empire.id} not found in database or not in game ${gameId}`);
                     }
@@ -261,7 +291,10 @@ export class GameStateService {
                     if (!lane.id || typeof lane.id !== 'string') {
                         throw new Error(`Invalid ID for star lane entity`);
                     }
-                    const result = await client.query('SELECT sl.id FROM star_lanes sl INNER JOIN stars s ON sl.source_star_id = s.id WHERE sl.id = $1 AND s.game_id = $2', [lane.id, gameId]);
+                    const result = await client.query(
+                        'SELECT sl.id FROM star_lanes sl INNER JOIN stars s ON sl.source_star_id = s.id INNER JOIN games g ON s.game_id = g.id WHERE sl.id = $1 AND g.id = $2',
+                        [lane.id, gameId]
+                    );
                     if (result.rowCount === 0) {
                         throw new Error(`StarLane ID ${lane.id} does not belong to game ${gameId}`);
                     }
