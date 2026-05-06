@@ -1,6 +1,13 @@
 import { TurnAction, FullGameState } from '../types/game-state';
 import { runTurnPipeline } from '../turn-resolution/turn-pipeline';
 import { validateOrder } from '../turn-resolution/order-validator';
+import { 
+    updateEmpireExploredSystems,
+    updateFleetStarId,
+    updatePlanetResources,
+    updateBuildQueueProgress,
+    insertTurnHistory
+} from '../db/queries/game-state.queries';
 
 export class TurnResolutionService {
     /**
@@ -11,10 +18,60 @@ export class TurnResolutionService {
      */
     async resolveTurn(initialState: FullGameState, actions: TurnAction[]): Promise<FullGameState> {
         try {
-            return await runTurnPipeline(initialState, actions);
+            const newState = await runTurnPipeline(initialState, actions);
+            
+            // Persist changes to database
+            await this.persistStateChanges(initialState, newState, actions);
+            
+            return newState;
         } catch (error) {
             throw new Error(`Turn resolution failed: ${error instanceof Error ? error.message : String(error)}`);
         }
+    }
+
+    /**
+     * Persists state changes by comparing initial and new state
+     */
+    private async persistStateChanges(initialState: FullGameState, newState: FullGameState, actions: TurnAction[]): Promise<void> {
+        // Persist empire explored systems changes
+        for (const empire of newState.empires) {
+            const initialEmpire = initialState.empires.find(e => e.id === empire.id);
+            if (initialEmpire && JSON.stringify(empire.explored_systems) !== JSON.stringify(initialEmpire.explored_systems)) {
+                await updateEmpireExploredSystems(empire.id, empire.explored_systems);
+            }
+        }
+
+        // Persist fleet position changes
+        for (const fleet of newState.fleets) {
+            const initialFleet = initialState.fleets.find(f => f.id === fleet.id);
+            if (initialFleet && fleet.star_id !== initialFleet.star_id) {
+                await updateFleetStarId(fleet.id, fleet.star_id);
+            }
+        }
+
+        // Persist planet resource changes
+        for (const planet of newState.planets) {
+            const initialPlanet = initialState.planets.find(p => p.id === planet.id);
+            if (initialPlanet && JSON.stringify(planet.resources) !== JSON.stringify(initialPlanet.resources)) {
+                await updatePlanetResources(planet.id, planet.resources);
+            }
+        }
+
+        // Persist build queue progress changes
+        for (const bq of newState.buildQueues) {
+            const initialBq = initialState.buildQueues.find(b => b.id === bq.id);
+            if (initialBq && bq.progress !== initialBq.progress) {
+                await updateBuildQueueProgress(bq.id, bq.progress);
+            }
+        }
+
+        // Insert turn history
+        await insertTurnHistory({
+            game_id: newState.gameId,
+            empire_id: newState.empires[0]?.id || '',
+            turn_number: newState.currentTurn - 1,
+            actions: actions
+        });
     }
 
     /**

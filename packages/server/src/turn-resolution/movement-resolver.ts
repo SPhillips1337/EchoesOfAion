@@ -9,7 +9,8 @@ import { FullGameState, TurnAction } from '../types/game-state';
 export function resolveMovement(state: FullGameState, actions: TurnAction[]): FullGameState {
     const newState = { 
         ...state, 
-        fleets: state.fleets.map(f => ({ ...f })) 
+        fleets: state.fleets.map(f => ({ ...f })),
+        empires: state.empires.map(e => ({ ...e, explored_systems: [...e.explored_systems] }))
     };
     
     const moveActions = actions.filter(a => a.type === 'MOVE_FLEET');

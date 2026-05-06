@@ -9,7 +9,8 @@ import {
     Ship,
     Structure,
     BuildQueue,
-    TurnHistory
+    TurnHistory,
+    Game
 } from '../src/types/game-entities';
 
 describe('Static Schema-Entity Validation (No DB Required)', () => {
@@ -23,7 +24,8 @@ describe('Static Schema-Entity Validation (No DB Required)', () => {
         [TABLES.SHIPS]: ['id', 'fleet_id', 'ship_type', 'health', 'status', 'created_at'],
         [TABLES.STRUCTURES]: ['id', 'planet_id', 'structure_type', 'build_progress', 'created_at'],
         [TABLES.BUILD_QUEUES]: ['id', 'game_id', 'entity_type', 'entity_id', 'item_type', 'progress', 'created_at'],
-        [TABLES.TURN_HISTORY]: ['id', 'game_id', 'empire_id', 'turn_number', 'actions', 'resolved_at', 'created_at']
+        [TABLES.TURN_HISTORY]: ['id', 'game_id', 'empire_id', 'turn_number', 'actions', 'resolved_at', 'created_at'],
+        [TABLES.GAMES]: ['id', 'name', 'status', 'created_at']
     };
 
     it('should have schema columns matching entity properties for each table', () => {
@@ -84,5 +86,15 @@ describe('Static Schema-Entity Validation (No DB Required)', () => {
             created_at: new Date()
         };
         expect(Array.isArray(empire.explored_systems)).toBe(true);
+        
+        // Game entity validation
+        const game: Game = {
+            id: 'uuid',
+            name: 'Test Game',
+            status: 'active',
+            created_at: new Date()
+        };
+        expect(typeof game.name).toBe('string');
+        expect(['active', 'paused', 'completed']).toContain(game.status);
     });
 });

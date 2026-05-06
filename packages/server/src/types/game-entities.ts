@@ -88,3 +88,10 @@ export interface TurnHistory {
     resolved_at?: Date | null;
     created_at: Date;
 }
+
+export interface Game {
+    id: string; // UUID
+    name: string;
+    status: 'active' | 'paused' | 'completed';
+    created_at: Date;
+}

@@ -7,7 +7,8 @@ import {
     Ship,
     Structure,
     BuildQueue,
-    TurnHistory
+    TurnHistory,
+    Game
 } from '../types/game-entities';
 
 // Table name constants
@@ -20,7 +21,8 @@ export const TABLES = {
     SHIPS: 'ships',
     STRUCTURES: 'structures',
     BUILD_QUEUES: 'build_queues',
-    TURN_HISTORY: 'turn_history'
+    TURN_HISTORY: 'turn_history',
+    GAMES: 'games'
 } as const;
 
 // Type to table mapping
@@ -34,6 +36,7 @@ export type EntityTypeMap = {
     [TABLES.STRUCTURES]: Structure;
     [TABLES.BUILD_QUEUES]: BuildQueue;
     [TABLES.TURN_HISTORY]: TurnHistory;
+    [TABLES.GAMES]: Game;
 };
 
 // Column definitions for reference (matches migration)
@@ -46,5 +49,6 @@ export const COLUMNS = {
     ships: ['id', 'fleet_id', 'ship_type', 'health', 'status', 'created_at'],
     structures: ['id', 'planet_id', 'structure_type', 'build_progress', 'created_at'],
     build_queues: ['id', 'game_id', 'entity_type', 'entity_id', 'item_type', 'progress', 'created_at'],
-    turn_history: ['id', 'game_id', 'empire_id', 'turn_number', 'actions', 'resolved_at', 'created_at']
+    turn_history: ['id', 'game_id', 'empire_id', 'turn_number', 'actions', 'resolved_at', 'created_at'],
+    games: ['id', 'name', 'status', 'created_at']
 } as const;

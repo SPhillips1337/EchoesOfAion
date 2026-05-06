@@ -1,5 +1,4 @@
 import { FullGameState, VisibleGameState } from '../types/game-state';
-import { Planet } from '../types/game-entities';
 import { fetchEmpireExploredSystems } from '../db/queries/game-state.queries';
 
 export class VisibilityService {
@@ -16,10 +15,14 @@ export class VisibilityService {
 
         // Filter stars to explored systems only
         const visibleStars = fullState.stars.filter(star => exploredSet.has(star.id));
-        const visibleStarIds = new Set(visibleStars.map(s => s.id));
 
-        // Filter planets to those in explored systems
-        const visiblePlanets = fullState.planets.filter(planet => visibleStarIds.has(planet.star_id));
+        // Process planets: redact resources for unexplored systems, keep all planets
+        const processedPlanets = fullState.planets.map(planet => {
+            if (!exploredSet.has(planet.star_id)) {
+                return { ...planet, resources: {} as Record<string, number> };
+            }
+            return planet;
+        });
 
         // Filter star lanes to those connecting explored systems
         const visibleStarLanes = fullState.starLanes.filter(lane => 
@@ -42,21 +45,25 @@ export class VisibilityService {
             return fleet;
         });
 
-        // Redact unexplored resource values (set to null for non-friendly planets)
-        const redactedPlanets = visiblePlanets.map(planet => {
-            if (!exploredSet.has(planet.star_id)) {
-                return { ...planet, resources: null as any } as unknown as Planet; // eslint-disable-line @typescript-eslint/no-explicit-any
+        // Filter build queues to visible entities only
+        const visibleBuildQueues = fullState.buildQueues.filter(bq => {
+            if (bq.entity_type === 'planet') {
+                const planet = fullState.planets.find(p => p.id === bq.entity_id);
+                return planet && exploredSet.has(planet.star_id);
+            } else if (bq.entity_type === 'fleet') {
+                const fleet = fullState.fleets.find(f => f.id === bq.entity_id);
+                return fleet && exploredSet.has(fleet.star_id);
             }
-            return planet;
+            return false;
         });
 
         return {
             stars: visibleStars,
-            planets: redactedPlanets,
+            planets: processedPlanets,
             starLanes: visibleStarLanes,
             fleets: redactedFleets,
             empires: fullState.empires.filter(e => e.id === empireId), // Only show own empire
-            buildQueues: [], // TODO: filter build queues to visible entities
+            buildQueues: visibleBuildQueues,
             turnHistory: [], // Turn history not visible in visible state
             currentTurn: fullState.currentTurn,
             gameId: fullState.gameId,

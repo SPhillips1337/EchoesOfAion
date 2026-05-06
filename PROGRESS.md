@@ -23,21 +23,36 @@
 ### 4. LTM Bootstrapping
 - Initialized the Anti-Gravity LTM protocol in `.antigravity/memories/` to prevent future context loss.
 
+### 5. Database Migrations (FN-009 / FN-010)
+- **Migration Files Created**: Added `0002_add_explored_systems.sql` and `0003_add_games_table.sql` in `packages/server/migrations/`.
+- **Schema Updated**: Added `GAMES` entry to `TABLES` constant in `schema.ts`.
+- **Migrations Applied**: Applied to development database successfully.
+
+### 6. Visibility Refinement (FN-023)
+- **Build Queue Filtering**: Updated `VisibilityService.filterVisibleState` to exclude build queues for non-visible star systems.
+- **Planet Redaction**: Implemented redaction of resources, population, and buildQueue for unexplored planets.
+- **Tests Extended**: Added tests for build queue filtering, planet redaction, and edge cases.
+
+### 7. Persistence Implementation
+- **Database Writes Added**: `TurnResolutionService.resolveTurn` now persists empire explored systems, fleet positions, planet resources, build queues, and turn history.
+- **Pipeline Adjusted**: Updated `movement-resolver.ts` to deep copy empires to track state changes.
+- **Integration Tests**: Created `tests/turn-resolution.service.test.ts` with 8 tests covering persistence and consistency.
+
 ---
 
-## 🎯 Next Steps (Pick up Tomorrow)
+## 🎯 Next Steps (Future Sessions)
 
-### 1. Database Migrations (FN-009 / FN-010)
-- **FN-009**: Create and apply migration for the `explored_systems` column in the `empires` table.
-- **FN-010**: Create `games` table and add `game_id` constraints/keys to all existing entity tables.
-- **Note**: The application logic and constants in `schema.ts` are already prepared for these changes.
+### 1. Game Table Integration
+- Link existing entity tables to the new `games` table via foreign keys.
+- Update `GameStateService` to fetch state by game ID.
 
-### 2. Visibility Refinement (FN-023)
-- Enhance `VisibilityService` to filter `buildQueues` based on star system visibility.
-- Implement more granular redaction for unexplored planets (e.g., hiding specific resource counts until a scout arrives).
+### 2. Turn History Reconstruction
+- Enhance `reconstructStateForTurn` to use persisted turn history for full state replay.
+- Add tests for state reconstruction from history.
 
-### 3. Persistence Verification
-- Update `TurnResolutionService` to actually persist the resolved state and turn history snapshots to the database (currently logs a "Would persist" stub).
+### 3. Frontend Integration
+- Connect UI to new persistence endpoints.
+- Implement turn submission flow with resolution feedback.
 
 ---
-**Current Status**: Tests Passing | Pipeline Unblocked | LTM Synchronized
+**Current Status**: All Tests Passing | Persistence Implemented | Ready for Game Logic Expansion

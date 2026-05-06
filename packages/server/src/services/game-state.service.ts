@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { FullGameState, VisibleGameState, TurnReconstructionOptions, TurnAction } from '../types/game-state';
-import { Fleet, Planet } from '../types/game-entities';
+import { Fleet } from '../types/game-entities';
 import { fetchFullGameState, fetchTurnHistoryForReconstruction } from '../db/queries/game-state.queries';
 import { VisibilityService } from './visibility.service';
 
