@@ -25,6 +25,16 @@ export class GameStateService {
      * @returns FullGameState with all entities
      */
     async getFullGameState(gameId: string): Promise<FullGameState> {
+        // Validate game exists
+        const client = await this.pool.connect();
+        try {
+            const gameRes = await client.query('SELECT id FROM games WHERE id = $1', [gameId]);
+            if (gameRes.rowCount === 0) {
+                throw new Error(`Game ${gameId} not found`);
+            }
+        } finally {
+            client.release();
+        }
         return fetchFullGameState(gameId);
     }
 

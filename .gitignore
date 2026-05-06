@@ -79,6 +79,9 @@ desktop.ini
 *.sqlite3
 *.sql
 
+# Exclude migration SQL files from ignore
+!packages/server/migrations/*.sql
+
 # Temporary files
 tmp/
 temp/

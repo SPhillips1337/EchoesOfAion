@@ -56,6 +56,23 @@ describe('GameStateService', () => {
             const result = await service.getFullGameState('game1');
             expect(result).toEqual(mockState);
         });
+
+        it('should throw error if game not found', async () => {
+            // Mock client to return rowCount 0 for games table check
+            const mockClient = {
+                query: vi.fn().mockImplementation((text) => {
+                    if (text.includes('SELECT id FROM games')) {
+                        return { rowCount: 0 };
+                    }
+                    return { rowCount: 1 };
+                }),
+                release: vi.fn(),
+            };
+            mockPool.connect.mockResolvedValueOnce(mockClient);
+
+            await expect(service.getFullGameState('invalid-game'))
+                .rejects.toThrow('Game invalid-game not found');
+        });
     });
 
     describe('mutateGameState', () => {
@@ -79,7 +96,11 @@ describe('GameStateService', () => {
             const updates = {
                 stars: [{ id: 'non-existent-star' } as any],
             };
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // First call: games table check (return rowCount 1)
+            // Second call: stars table check (return rowCount 0)
+            mockClient.query
+                .mockResolvedValueOnce({ rowCount: 1 }) // games check
+                .mockResolvedValueOnce({ rowCount: 0 }); // stars check
 
             await expect(service.mutateGameState('game1', updates)).rejects.toThrow('not found in database');
         });
@@ -130,6 +151,22 @@ describe('GameStateService', () => {
             const result = await service.getVisibleGameState('empire1', 'game1');
             expect(result.stars).toHaveLength(1);
             expect(result.stars[0].id).toBe('star1');
+        });
+
+        it('should propagate game not found error from getFullGameState', async () => {
+            const mockClient = {
+                query: vi.fn().mockImplementation((text) => {
+                    if (text.includes('SELECT id FROM games')) {
+                        return { rowCount: 0 };
+                    }
+                    return { rowCount: 1 };
+                }),
+                release: vi.fn(),
+            };
+            mockPool.connect.mockResolvedValueOnce(mockClient);
+
+            await expect(service.getVisibleGameState('empire1', 'invalid-game'))
+                .rejects.toThrow('Game invalid-game not found');
         });
     });
 });

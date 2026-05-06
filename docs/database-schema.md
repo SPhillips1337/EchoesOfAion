@@ -16,10 +16,21 @@ empires (1) ----- (n) turn_history
 
 ## Table Definitions
 
+### games
+| Column       | Type                  | Constraints                          |
+|--------------|-----------------------|--------------------------------------|
+| id           | UUID (PK)             | Default: gen_random_uuid()            |
+| name         | VARCHAR(255)          | NOT NULL                             |
+| status       | VARCHAR(50)           | NOT NULL, Default: 'active', CHECK (active, paused, completed) |
+| created_at   | TIMESTAMP WITH TZ     | Default: CURRENT_TIMESTAMP           |
+
+**Indexes**: None specified (PK is indexed by default)
+
 ### stars
 | Column       | Type                  | Constraints                          |
 |--------------|-----------------------|--------------------------------------|
 | id           | UUID (PK)             | Default: uuid_generate_v4()          |
+| game_id      | UUID (FK)             | NOT NULL, REFERENCES games(id) ON DELETE CASCADE |
 | name         | VARCHAR(255)          | NOT NULL                             |
 | x_coord      | NUMERIC(10,2)        | NOT NULL                             |
 | y_coord      | NUMERIC(10,2)        | NOT NULL                             |
@@ -32,6 +43,7 @@ empires (1) ----- (n) turn_history
 | Column       | Type                  | Constraints                          |
 |--------------|-----------------------|--------------------------------------|
 | id           | UUID (PK)             | Default: uuid_generate_v4()          |
+| game_id      | UUID (FK)             | NOT NULL, REFERENCES games(id) ON DELETE CASCADE |
 | star_id      | UUID (FK)             | NOT NULL, REFERENCES stars(id) ON DELETE CASCADE |
 | name         | VARCHAR(255)          | NOT NULL                             |
 | planet_type  | VARCHAR(50)           | NOT NULL, CHECK (terrestrial, gas_giant, ice, desert, ocean) |
@@ -46,6 +58,7 @@ empires (1) ----- (n) turn_history
 | Column               | Type                  | Constraints                          |
 |----------------------|-----------------------|--------------------------------------|
 | id                   | UUID (PK)             | Default: uuid_generate_v4()          |
+| game_id              | UUID (FK)             | NOT NULL, REFERENCES games(id) ON DELETE CASCADE |
 | source_star_id       | UUID (FK)             | NOT NULL, REFERENCES stars(id) ON DELETE CASCADE |
 | destination_star_id  | UUID (FK)             | NOT NULL, REFERENCES stars(id) ON DELETE CASCADE |
 | distance             | NUMERIC(10,2)        | NOT NULL, CHECK (distance > 0)       |
@@ -57,6 +70,7 @@ empires (1) ----- (n) turn_history
 | Column       | Type                  | Constraints                          |
 |--------------|-----------------------|--------------------------------------|
 | id           | UUID (PK)             | Default: uuid_generate_v4()          |
+| game_id      | UUID (FK)             | NOT NULL, REFERENCES games(id) ON DELETE CASCADE |
 | name         | VARCHAR(255)          | NOT NULL, UNIQUE                     |
 | player_type  | VARCHAR(20)           | NOT NULL, CHECK (human, ai)          |
 | color        | VARCHAR(20)           | NOT NULL                             |
@@ -66,6 +80,7 @@ empires (1) ----- (n) turn_history
 | Column       | Type                  | Constraints                          |
 |--------------|-----------------------|--------------------------------------|
 | id           | UUID (PK)             | Default: uuid_generate_v4()          |
+| game_id      | UUID (FK)             | NOT NULL, REFERENCES games(id) ON DELETE CASCADE |
 | empire_id    | UUID (FK)             | NOT NULL, REFERENCES empires(id) ON DELETE CASCADE |
 | star_id      | UUID (FK)             | NOT NULL, REFERENCES stars(id) ON DELETE CASCADE |
 | name         | VARCHAR(255)          | NOT NULL                             |
@@ -101,6 +116,7 @@ empires (1) ----- (n) turn_history
 | Column       | Type                  | Constraints                          |
 |--------------|-----------------------|--------------------------------------|
 | id           | UUID (PK)             | Default: uuid_generate_v4()          |
+| game_id      | UUID (FK)             | NOT NULL, REFERENCES games(id) ON DELETE CASCADE |
 | entity_type  | VARCHAR(20)           | NOT NULL, CHECK (planet, fleet)      |
 | entity_id    | UUID                  | NOT NULL (polymorphic reference)      |
 | item_type    | VARCHAR(50)           | NOT NULL                             |
@@ -114,6 +130,7 @@ empires (1) ----- (n) turn_history
 | Column       | Type                  | Constraints                          |
 |--------------|-----------------------|--------------------------------------|
 | id           | UUID (PK)             | Default: uuid_generate_v4()          |
+| game_id      | UUID (FK)             | NOT NULL, REFERENCES games(id) ON DELETE CASCADE |
 | empire_id    | UUID (FK)             | NOT NULL, REFERENCES empires(id) ON DELETE CASCADE |
 | turn_number  | INTEGER               | NOT NULL, CHECK (turn_number > 0)    |
 | actions      | JSONB                 | NOT NULL, Default: '[]'              |
@@ -121,6 +138,24 @@ empires (1) ----- (n) turn_history
 | created_at   | TIMESTAMP WITH TZ     | Default: NOW()                       |
 
 **Indexes**: empire_id; (empire_id, turn_number); GIN index on actions
+
+## Foreign Key Constraints Summary
+All entity tables (stars, planets, star_lanes, empires, fleets, build_queues, turn_history) have `game_id` foreign key constraints referencing `games(id)` with `ON DELETE CASCADE`. This ensures referential integrity and automatic cleanup when a game is deleted.
+
+## Rollback Procedures
+To drop foreign key constraints (reverse of migration 0004):
+```sql
+BEGIN;
+ALTER TABLE turn_history DROP CONSTRAINT IF EXISTS fk_turn_history_game_id;
+ALTER TABLE build_queues DROP CONSTRAINT IF EXISTS fk_build_queues_game_id;
+ALTER TABLE fleets DROP CONSTRAINT IF EXISTS fk_fleets_game_id;
+ALTER TABLE empires DROP CONSTRAINT IF EXISTS fk_empires_game_id;
+ALTER TABLE star_lanes DROP CONSTRAINT IF EXISTS fk_star_lanes_game_id;
+ALTER TABLE planets DROP CONSTRAINT IF EXISTS fk_planets_game_id;
+ALTER TABLE stars DROP CONSTRAINT IF EXISTS fk_stars_game_id;
+ALTER TABLE build_queues DROP COLUMN IF EXISTS game_id;
+COMMIT;
+```
 
 ## Migration Instructions
 1. Ensure PostgreSQL 14+ is installed and running
