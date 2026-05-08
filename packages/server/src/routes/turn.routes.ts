@@ -4,17 +4,24 @@ import { GameStateService } from '../services/game-state.service';
 import { validateOrder } from '../turn-resolution/order-validator';
 import { TurnAction, FullGameState } from '../types/game-state';
 import { Pool } from 'pg';
+import { GameCreationService } from '../services/game-creation.service';
+import { VictoryService } from '../services/victory.service';
+import { AIEmpireService } from '../services/ai-empire.service';
 
-/**
- * Factory function to create turn routes with injectable dependencies
- */
+interface GameCreationOptions {
+    name: string;
+    starCount: number;
+    empireCount: number;
+    playerEmpireName: string;
+    playerColor: string;
+}
+
 export function createTurnRouter(
     gameStateService?: GameStateService,
     turnResolutionService?: TurnResolutionService
 ): Router {
     const router = Router();
 
-    // Use provided services or create defaults
     const pool = new Pool({
         host: process.env.PG_HOST || 'localhost',
         port: parseInt(process.env.PG_PORT || '5432'),
@@ -25,49 +32,62 @@ export function createTurnRouter(
 
     const gss = gameStateService || new GameStateService(pool);
     const trs = turnResolutionService || new TurnResolutionService();
+    const gcs = new GameCreationService();
+    const vs = new VictoryService();
+    const ais = new AIEmpireService();
 
-    /**
-     * POST /api/turns/submit
-     * Submit turn actions for resolution
-     * Body: { gameId: string, empireId: string, actions: TurnAction[] }
-     */
+    const gameStates = new Map<string, FullGameState>();
+
+    router.post('/games/create', (req: Request, res: Response) => {
+        try {
+            const options: GameCreationOptions = req.body;
+            
+            if (!options.name || !options.starCount || !options.empireCount) {
+                return res.status(400).json({ error: 'Missing required fields' });
+            }
+
+            const newGame = gcs.createGame(options);
+            gameStates.set(newGame.gameId, newGame);
+
+            return res.status(201).json(newGame);
+        } catch (error) {
+            console.error('Error creating game:', error);
+            return res.status(500).json({ error: 'Failed to create game' });
+        }
+    });
+
+    router.get('/games/:gameId', (req: Request, res: Response) => {
+        const { gameId } = req.params;
+        const game = gameStates.get(gameId);
+        
+        if (!game) {
+            return res.status(404).json({ error: 'Game not found' });
+        }
+        
+        return res.json(game);
+    });
+
     router.post('/turns/submit', async (req: Request, res: Response) => {
         try {
             const { gameId, empireId, actions } = req.body;
 
-            // Validate required fields
             if (!gameId || typeof gameId !== 'string') {
-                return res.status(400).json({ 
-                    error: 'Invalid or missing gameId. Must be a non-empty string.' 
-                });
+                return res.status(400).json({ error: 'Invalid or missing gameId' });
             }
 
             if (!empireId || typeof empireId !== 'string') {
-                return res.status(400).json({ 
-                    error: 'Invalid or missing empireId. Must be a non-empty string.' 
-                });
+                return res.status(400).json({ error: 'Invalid or missing empireId' });
             }
 
             if (!Array.isArray(actions) || actions.length === 0) {
-                return res.status(400).json({ 
-                    error: 'actions must be a non-empty array of TurnAction objects.' 
-                });
+                return res.status(400).json({ error: 'actions must be a non-empty array' });
             }
 
-            // Basic UUID format validation (simplified check)
             const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
             if (!uuidRegex.test(gameId)) {
-                return res.status(400).json({ 
-                    error: 'gameId must be a valid UUID.' 
-                });
-            }
-            if (!uuidRegex.test(empireId)) {
-                return res.status(400).json({ 
-                    error: 'empireId must be a valid UUID.' 
-                });
+                return res.status(400).json({ error: 'gameId must be a valid UUID' });
             }
 
-            // Validate each TurnAction using order-validator
             for (let i = 0; i < actions.length; i++) {
                 try {
                     validateOrder(actions[i] as TurnAction);
@@ -78,17 +98,16 @@ export function createTurnRouter(
                 }
             }
 
-            // Fetch initial game state
-            let initialState: FullGameState;
-            try {
-                initialState = await gss.getFullGameState(gameId);
-            } catch (stateError) {
-                return res.status(404).json({ 
-                    error: `Failed to fetch game state: ${stateError instanceof Error ? stateError.message : String(stateError)}` 
-                });
+            let initialState = gameStates.get(gameId);
+            
+            if (!initialState) {
+                try {
+                    initialState = await gss.getFullGameState(gameId);
+                } catch {
+                    return res.status(404).json({ error: 'Game not found' });
+                }
             }
 
-            // Resolve turn with submitted actions
             let resolvedState: FullGameState;
             try {
                 resolvedState = await trs.resolveTurn(initialState, actions as TurnAction[]);
@@ -98,12 +117,21 @@ export function createTurnRouter(
                 });
             }
 
-            // Return resolved state
+            const aiActions = ais.generateAIActions(resolvedState);
+            if (aiActions.length > 0) {
+                resolvedState = await trs.resolveTurn(resolvedState, aiActions);
+            }
+
+            const victory = vs.checkVictory(resolvedState);
+
+            gameStates.set(gameId, resolvedState);
+
             return res.status(200).json({
                 success: true,
-                message: 'Turn submitted and resolved successfully.',
-                resolvedState,
-                turnNumber: resolvedState.currentTurn
+                newState: resolvedState,
+                turnNumber: resolvedState.currentTurn,
+                victory: victory ? { winner: victory.winner, victoryType: victory.victoryType } : null,
+                battleResult: null
             });
 
         } catch (error) {
@@ -117,6 +145,5 @@ export function createTurnRouter(
     return router;
 }
 
-// Default export for use in app.ts
 const router = createTurnRouter();
 export default router;

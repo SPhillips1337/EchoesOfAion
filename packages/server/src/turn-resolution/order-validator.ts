@@ -52,6 +52,40 @@ export function validateOrder(action: TurnAction): void {
                 throw new Error('CONSTRUCT_SHIP action requires a valid shipType string');
             }
             break;
+        case 'START_RESEARCH':
+            if (!action.payload.empireId || typeof action.payload.empireId !== 'string') {
+                throw new Error('START_RESEARCH action requires a valid empireId string');
+            }
+            if (!action.payload.techId || typeof action.payload.techId !== 'string') {
+                throw new Error('START_RESEARCH action requires a valid techId string');
+            }
+            break;
+        case 'ESTABLISH_TRADE_ROUTE':
+            if (!action.payload.empireId || typeof action.payload.empireId !== 'string') {
+                throw new Error('ESTABLISH_TRADE_ROUTE action requires a valid empireId string');
+            }
+            if (!action.payload.sourcePlanetId || typeof action.payload.sourcePlanetId !== 'string') {
+                throw new Error('ESTABLISH_TRADE_ROUTE action requires a valid sourcePlanetId string');
+            }
+            if (!action.payload.destinationPlanetId || typeof action.payload.destinationPlanetId !== 'string') {
+                throw new Error('ESTABLISH_TRADE_ROUTE action requires a valid destinationPlanetId string');
+            }
+            break;
+        case 'ESTABLISH_DIPLOMACY':
+            if (!action.payload.empireId || typeof action.payload.empireId !== 'string') {
+                throw new Error('ESTABLISH_DIPLOMACY action requires a valid empireId string');
+            }
+            if (!action.payload.targetEmpireId || typeof action.payload.targetEmpireId !== 'string') {
+                throw new Error('ESTABLISH_DIPLOMACY action requires a valid targetEmpireId string');
+            }
+            if (!action.payload.relation || typeof action.payload.relation !== 'string') {
+                throw new Error('ESTABLISH_DIPLOMACY action requires a valid relation string');
+            }
+            const validRelations = ['war', 'hostile', 'neutral', 'friendly', 'alliance'];
+            if (!validRelations.includes(action.payload.relation)) {
+                throw new Error(`ESTABLISH_DIPLOMACY relation must be one of: ${validRelations.join(', ')}`);
+            }
+            break;
         default:
             throw new Error(`Unknown TurnAction type: ${action.type}`);
     }

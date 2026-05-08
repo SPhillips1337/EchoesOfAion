@@ -38,6 +38,12 @@ export interface Empire {
     color: string;
     /** JSONB array of explored star system IDs stored as strings */
     explored_systems: string[];
+    /** Research progress for currently researched technology */
+    research?: {
+        techId: string;
+        progress: number;
+        startedAt: Date;
+    };
     created_at: Date;
 }
 

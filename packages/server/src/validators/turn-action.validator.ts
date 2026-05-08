@@ -36,9 +36,53 @@ export function validateTurnAction(action: TurnAction): void {
                 throw new Error('BUILD_STRUCTURE action requires a valid structureType string');
             }
             break;
-        // Add more action types as needed
+        case 'COLONIZE_PLANET':
+            if (!action.payload.fleetId || typeof action.payload.fleetId !== 'string') {
+                throw new Error('COLONIZE_PLANET action requires a valid fleetId string');
+            }
+            if (!action.payload.planetId || typeof action.payload.planetId !== 'string') {
+                throw new Error('COLONIZE_PLANET action requires a valid planetId string');
+            }
+            break;
+        case 'CONSTRUCT_SHIP':
+            if (!action.payload.planetId || typeof action.payload.planetId !== 'string') {
+                throw new Error('CONSTRUCT_SHIP action requires a valid planetId string');
+            }
+            if (!action.payload.shipType || typeof action.payload.shipType !== 'string') {
+                throw new Error('CONSTRUCT_SHIP action requires a valid shipType string');
+            }
+            break;
+        case 'START_RESEARCH':
+            if (!action.payload.empireId || typeof action.payload.empireId !== 'string') {
+                throw new Error('START_RESEARCH action requires a valid empireId string');
+            }
+            if (!action.payload.techId || typeof action.payload.techId !== 'string') {
+                throw new Error('START_RESEARCH action requires a valid techId string');
+            }
+            break;
+        case 'ESTABLISH_TRADE_ROUTE':
+            if (!action.payload.empireId || typeof action.payload.empireId !== 'string') {
+                throw new Error('ESTABLISH_TRADE_ROUTE action requires a valid empireId string');
+            }
+            if (!action.payload.sourcePlanetId || typeof action.payload.sourcePlanetId !== 'string') {
+                throw new Error('ESTABLISH_TRADE_ROUTE action requires a valid sourcePlanetId string');
+            }
+            if (!action.payload.destinationPlanetId || typeof action.payload.destinationPlanetId !== 'string') {
+                throw new Error('ESTABLISH_TRADE_ROUTE action requires a valid destinationPlanetId string');
+            }
+            break;
+        case 'ESTABLISH_DIPLOMACY':
+            if (!action.payload.empireId || typeof action.payload.empireId !== 'string') {
+                throw new Error('ESTABLISH_DIPLOMACY action requires a valid empireId string');
+            }
+            if (!action.payload.targetEmpireId || typeof action.payload.targetEmpireId !== 'string') {
+                throw new Error('ESTABLISH_DIPLOMACY action requires a valid targetEmpireId string');
+            }
+            if (!action.payload.relation || typeof action.payload.relation !== 'string') {
+                throw new Error('ESTABLISH_DIPLOMACY action requires a valid relation string');
+            }
+            break;
         default:
-            // Allow unknown action types but log a warning (or throw if strict mode)
             console.warn(`Unknown TurnAction type: ${action.type}`);
     }
 }

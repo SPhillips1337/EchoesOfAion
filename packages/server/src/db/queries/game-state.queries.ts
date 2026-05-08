@@ -20,15 +20,16 @@ export async function fetchFullGameState(gameId: string): Promise<FullGameState>
         );
         const starIds = starsRes.rows.map(s => s.id);
         if (starIds.length === 0) {
-            return {
+return {
                 stars: [],
                 planets: [],
                 starLanes: [],
                 empires: [],
                 fleets: [],
                 buildQueues: [],
+                structures: [],
                 turnHistory: [],
-                currentTurn: 1,
+                currentTurn: 0,
                 gameId,
             };
         }
@@ -76,6 +77,7 @@ export async function fetchFullGameState(gameId: string): Promise<FullGameState>
             empires: empiresRes.rows,
             fleets: fleetsRes.rows,
             buildQueues: buildQueuesRes.rows,
+            structures: [],
             turnHistory: turnHistoryRes.rows,
             currentTurn,
             gameId,

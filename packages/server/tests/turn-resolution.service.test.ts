@@ -12,7 +12,15 @@ import {
 import { FullGameState, TurnAction } from '../src/types/game-state';
 import { Empire, Fleet, Planet, BuildQueue, TurnHistory } from '../src/types/game-entities';
 
-vi.mock('../src/db/queries/game-state.queries');
+vi.mock('../src/db/queries/game-state.queries', () => ({
+    updateEmpireExploredSystems: vi.fn(),
+    updateFleetStarId: vi.fn(),
+    updatePlanetResources: vi.fn(),
+    updateBuildQueueProgress: vi.fn(),
+    insertBuildQueue: vi.fn(),
+    insertTurnHistory: vi.fn(),
+    fetchFullGameState: vi.fn()
+}));
 
 describe('TurnResolutionService', () => {
     let service: TurnResolutionService;

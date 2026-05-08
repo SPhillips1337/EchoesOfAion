@@ -53,8 +53,9 @@ describe('game-state.queries.ts', () => {
                 empires: [],
                 fleets: [],
                 buildQueues: [],
+                structures: [],
                 turnHistory: [],
-                currentTurn: 1,
+                currentTurn: 0,
                 gameId,
             });
         });

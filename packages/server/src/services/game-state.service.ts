@@ -100,6 +100,7 @@ export class GameStateService {
             empires: [],
             fleets: [],
             buildQueues: [],
+            structures: [],
             turnHistory: [],
             currentTurn: 0,
             gameId,
@@ -450,6 +451,51 @@ export class GameStateService {
                     }
                     return f;
                 });
+                break;
+            }
+            case 'START_RESEARCH': {
+                const { empireId, techId } = action.payload as Record<string, unknown>;
+                if (!empireId || typeof empireId !== 'string') {
+                    throw new Error('empireId is required in START_RESEARCH action payload');
+                }
+                if (!techId || typeof techId !== 'string') {
+                    throw new Error('techId is required in START_RESEARCH action payload');
+                }
+                const empire = newState.empires.find(e => e.id === empireId);
+                if (!empire) {
+                    throw new Error(`Empire ${empireId} not found in game state`);
+                }
+                (empire as unknown as Record<string, unknown>).research = {
+                    techId,
+                    progress: 0,
+                    startedAt: new Date()
+                };
+                break;
+            }
+            case 'ESTABLISH_TRADE_ROUTE': {
+                const { sourcePlanetId, destinationPlanetId } = action.payload as Record<string, unknown>;
+                if (!sourcePlanetId || typeof sourcePlanetId !== 'string') {
+                    throw new Error('sourcePlanetId is required in ESTABLISH_TRADE_ROUTE action payload');
+                }
+                if (!destinationPlanetId || typeof destinationPlanetId !== 'string') {
+                    throw new Error('destinationPlanetId is required in ESTABLISH_TRADE_ROUTE action payload');
+                }
+                const sourcePlanet = newState.planets.find(p => p.id === sourcePlanetId);
+                const destPlanet = newState.planets.find(p => p.id === destinationPlanetId);
+                if (!sourcePlanet || !destPlanet) {
+                    throw new Error('Invalid trade route: planets not found');
+                }
+                const tradeValue = 20;
+                if (!sourcePlanet.resources) sourcePlanet.resources = {};
+                if (!destPlanet.resources) destPlanet.resources = {};
+                sourcePlanet.resources.trade = (sourcePlanet.resources.trade || 0) + tradeValue;
+                destPlanet.resources.trade = (destPlanet.resources.trade || 0) + tradeValue;
+                break;
+            }
+            case 'ESTABLISH_DIPLOMACY': {
+                // Diplomatic relations are tracked separately; for now, just log the action
+                const { empireId, targetEmpireId, relation } = action.payload as Record<string, unknown>;
+                console.log(`Diplomacy: ${empireId} set relation with ${targetEmpireId} to ${relation}`);
                 break;
             }
             default: {

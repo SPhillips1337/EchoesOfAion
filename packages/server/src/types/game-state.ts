@@ -1,4 +1,4 @@
-import { Star, Planet, StarLane, Empire, Fleet, BuildQueue, TurnHistory } from './game-entities';
+import { Star, Planet, StarLane, Empire, Fleet, BuildQueue, TurnHistory, Structure } from './game-entities';
 
 /** Full game state for a specific game, aggregating all entity types */
 export interface FullGameState {
@@ -8,6 +8,7 @@ export interface FullGameState {
     empires: Empire[];
     fleets: Fleet[];
     buildQueues: BuildQueue[];
+    structures: Structure[];
     /** Aggregated per-empire TurnHistory entries for the game, ordered by turn number */
     turnHistory: TurnHistory[];
     currentTurn: number;

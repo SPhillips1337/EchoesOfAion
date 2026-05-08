@@ -64,6 +64,10 @@ export class VisibilityService {
             fleets: redactedFleets,
             empires: fullState.empires.filter(e => e.id === empireId), // Only show own empire
             buildQueues: visibleBuildQueues,
+            structures: (fullState.structures || []).filter(s => {
+                const planet = fullState.planets.find(p => p.id === s.planet_id);
+                return planet && exploredSet.has(planet.star_id);
+            }),
             turnHistory: [], // Turn history not visible in visible state
             currentTurn: fullState.currentTurn,
             gameId: fullState.gameId,

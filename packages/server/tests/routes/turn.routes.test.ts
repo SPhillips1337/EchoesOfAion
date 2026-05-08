@@ -51,23 +51,22 @@ describe('Turn Routes', () => {
     });
 
     describe('POST /api/turns/submit', () => {
-        it('should return 200 with resolved state on valid submission', async () => {
-            const validAction: TurnAction = {
-                type: 'MOVE_FLEET',
-                payload: {
-                    fleetId: 'fleet-123',
-                    destinationStarId: 'star-456'
-                },
-                turnNumber: 1
-            };
-
+it('should return 200 with resolved state on valid submission', async () => {
             const response = await request(app)
                 .post('/api/turns/submit')
                 .send({
                     gameId: '550e8400-e29b-41d4-a716-446655440000',
                     empireId: '550e8400-e29b-41d4-a716-446655440001',
-                    actions: [validAction]
+                    actions: [
+                        { type: 'MOVE_FLEET', payload: { fleetId: 'fleet-1', destinationStarId: 'star-2' }, turnNumber: 1 }
+                    ]
                 });
+
+            expect(response.status).toBe(200);
+            expect(response.body.success).toBe(true);
+            expect(response.body.newState).toBeDefined();
+            expect(response.body.newState.currentTurn).toBe(2);
+        });
 
             expect(response.status).toBe(200);
             expect(response.body.success).toBe(true);
@@ -94,7 +93,7 @@ describe('Turn Routes', () => {
                 .send({
                     gameId: '550e8400-e29b-41d4-a716-446655440000',
                     empireId: 'invalid-uuid',
-                    actions: [{ type: 'MOVE_FLEET', payload: {}, turnNumber: 1 }]
+                    actions: [{ type: 'MOVE_FLEET', payload: { fleetId: '550e8400-e29b-41d4-a716-446655440001', destinationStarId: '550e8400-e29b-41d4-a716-446655440002' }, turnNumber: 1 }]
                 });
 
             expect(response.status).toBe(400);
@@ -162,23 +161,20 @@ describe('Turn Routes', () => {
             expect(response.body.error).toContain('Invalid TurnAction');
         });
 
-        it('should return 404 when game state fetch fails', async () => {
-            // Override the mock to simulate game not found
-            (mockGameStateService.getFullGameState as any).mockRejectedValueOnce(
-                new Error('Game 550e8400-e29b-41d4-a716-446655440000 not found')
-            );
-
+it('should return 404 when game state fetch fails', async () => {
             const response = await request(app)
                 .post('/api/turns/submit')
                 .send({
-                    gameId: '550e8400-e29b-41d4-a716-446655440000',
+                    gameId: '550e8400-e29b-41d4-a716-446655440099',
                     empireId: '550e8400-e29b-41d4-a716-446655440001',
-                    actions: [{
-                        type: 'MOVE_FLEET',
-                        payload: { fleetId: 'fleet-123', destinationStarId: 'star-456' },
-                        turnNumber: 1
-                    }]
+                    actions: [
+                        { type: 'MOVE_FLEET', payload: { fleetId: 'fleet-1', destinationStarId: 'star-2' }, turnNumber: 1 }
+                    ]
                 });
+
+            expect(response.status).toBe(404);
+            expect(response.body.error).toContain('Game not found');
+        });
 
             expect(response.status).toBe(404);
             expect(response.body.error).toContain('Failed to fetch game state');
