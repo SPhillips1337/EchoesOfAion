@@ -18,8 +18,17 @@ async function main() {
         console.log('Database setup complete.');
         console.log('Available tables:', Object.values(schema.TABLES));
         
-        // TODO: Start the actual server (e.g., Express, WebSocket) here
-        console.log('Server ready. (Full server implementation pending.)');
+        // Start the Express server
+        const { default: app } = await import('./app');
+        const PORT = process.env.PORT || 3000;
+        
+        app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+            console.log(`UI available at http://localhost:${PORT}`);
+            console.log(`API available at http://localhost:${PORT}/api`);
+        });
+        
+        console.log('Server is fully operational.');
         
     } catch (err) {
         console.error('Failed to start server:', err);

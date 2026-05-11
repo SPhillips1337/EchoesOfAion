@@ -28,15 +28,7 @@ export async function setupDatabase(): Promise<void> {
     // Skip files that contain foreign key constraints (FN-005 scope)
     const migrationFiles = fs.readdirSync(migrationsDir)
         .filter(file => file.endsWith('.sql'))
-        .filter(file => {
-            // Skip files that are known to contain foreign key constraints (FN-005 scope)
-            if (file.includes('foreign_key') || file.includes('0003_') || file.includes('0004_')) {
-                console.log(`Skipping out-of-scope migration: ${file}`);
-                return false;
-            }
-            return true;
-        })
-        .sort(); // Lexicographical order ensures 001_ runs before 002_, etc.
+        .sort(); // Lexicographical order ensures 0001_ runs before 0002_, etc.
 
     if (migrationFiles.length === 0) {
         console.log('No migration files found.');

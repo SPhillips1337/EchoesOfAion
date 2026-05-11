@@ -14,14 +14,17 @@ export class TurnResolutionService {
      * Orchestrates the resolution of a full game turn
      * @param initialState - Current state of the game
      * @param actions - Player/AI actions for the current turn
+     * @param persistToDb - Whether to persist changes to the database (default: false for in-memory games)
      * @returns New game state after resolution
      */
-    async resolveTurn(initialState: FullGameState, actions: TurnAction[]): Promise<FullGameState> {
+    async resolveTurn(initialState: FullGameState, actions: TurnAction[], persistToDb: boolean = false): Promise<FullGameState> {
         try {
             const newState = await runTurnPipeline(initialState, actions);
             
-            // Persist changes to database
-            await this.persistStateChanges(initialState, newState, actions);
+            // Only persist to database if explicitly requested (i.e., game was loaded from DB)
+            if (persistToDb) {
+                await this.persistStateChanges(initialState, newState, actions);
+            }
             
             return newState;
         } catch (error) {

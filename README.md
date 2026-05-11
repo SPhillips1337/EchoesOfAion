@@ -11,33 +11,33 @@ Follow these steps to get the game up and running for testing.
 - **pnpm**: `npm install -g pnpm`
 - **PostgreSQL**: Ensure a Postgres server is running locally
 
-### 2. Database Setup
-The game requires a PostgreSQL database. You can set it up using the following commands:
+### 2. Launch with Docker (Recommended)
+The easiest way to start the game is using Docker Compose, which handles both the database and the server:
 
 ```bash
-# Create the database
+# Start the database and server
+docker-compose up -d
+```
+The game will be available at **[http://localhost:3000](http://localhost:3000)**.
+
+### 3. Manual Installation (Alternative)
+If you prefer to run services locally:
+
+#### Database Setup
+Ensure PostgreSQL is running and create the database:
+```bash
+# If postgres-client is installed:
 createdb echoes_of_aion
 
-# Optional: Set environment variables if your Postgres setup is non-default
-# export DATABASE_URL="postgresql://user:password@localhost:5432/echoes_of_aion"
+# Or via psql:
+psql -c "CREATE DATABASE echoes_of_aion;"
 ```
 
-### 3. Installation
-Install all dependencies for both the server and client:
-
+#### Application Setup
 ```bash
 pnpm install
-```
-
-### 4. Build and Start
-The server serves the client UI as static files. You need to build the project first:
-
-```bash
-# Build the server and client
 cd packages/server
 pnpm run build
-
-# Start the server
 pnpm run start
 ```
 
