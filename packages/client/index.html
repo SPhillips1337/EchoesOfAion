@@ -3,116 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Echoes of Aion - Galactic Conquest</title>
+    <title>Echoes of Aion - Cosmic Commander</title>
+    <!-- Google Fonts Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Space Particle Void Background -->
+    <canvas id="spaceVoidBackground"></canvas>
+
     <div class="game-container">
+        <!-- Floating Glass Header -->
         <header class="game-header">
-            <h1>Echoes of Aion</h1>
+            <div class="header-logo">
+                <span class="logo-pulse"></span>
+                <h1>E C H O E S &nbsp; O F &nbsp; A I O N</h1>
+            </div>
+            
+            <!-- Floating Advisor Transcript Widget -->
+            <div class="advisor-widget" id="advisorWidget">
+                <div class="advisor-avatar" id="advisorAvatarBtn">
+                    <span class="advisor-glow"></span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                        <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v4M8 23h8"/>
+                    </svg>
+                </div>
+                <div class="advisor-body">
+                    <div class="advisor-header">
+                        <span class="advisor-title">AION ADVISOR</span>
+                        <div class="advisor-controls">
+                            <span class="advisor-status-pill active" id="advisorStatus">ACTIVE</span>
+                            <button class="btn-icon" id="advisorMuteBtn" title="Toggle Voice Synth">🔊</button>
+                        </div>
+                    </div>
+                    <div class="advisor-text" id="advisorText">System online. Establish galactic coordinates to launch the command engine.</div>
+                </div>
+            </div>
+
             <div class="header-info">
-                <span id="turnDisplay">Turn: 1</span>
-                <span id="empireDisplay">Empire: Player</span>
+                <span id="empireDisplay" class="telemetry-badge">Empire: Player</span>
+                <span id="turnDisplay" class="telemetry-badge active">Turn: 1</span>
             </div>
         </header>
 
-        <div class="game-setup" id="gameSetup">
-            <h2>Create New Game</h2>
-            <form id="createGameForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Game Name:</label>
-                        <input type="text" id="gameName" value="My Galaxy" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Star Systems:</label>
-                        <input type="number" id="starCount" value="8" min="4" max="20">
-                    </div>
-                    <div class="form-group">
-                        <label>Empires:</label>
-                        <input type="number" id="empireCount" value="3" min="2" max="8">
-                    </div>
+        <!-- Command Deck Setups -->
+        <div class="game-setup-container" id="gameSetup">
+            <div class="game-setup-card">
+                <div class="setup-header">
+                    <h2>INITIATE GALACTIC PROTOCOL</h2>
+                    <p>Establish coordinates for the local stellar partition</p>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Empire Name:</label>
-                        <input type="text" id="playerEmpireName" value="Human Empire">
+                <form id="createGameForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>COSMIC REGISTER NAME</label>
+                            <input type="text" id="gameName" value="My Galaxy" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Color:</label>
-                        <select id="playerColor">
-                            <option value="red">Red</option>
-                            <option value="blue">Blue</option>
-                            <option value="green">Green</option>
-                            <option value="yellow">Yellow</option>
-                            <option value="purple">Purple</option>
-                            <option value="cyan">Cyan</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>STAR COUNT</label>
+                            <input type="number" id="starCount" value="8" min="4" max="20">
+                        </div>
+                        <div class="form-group">
+                            <label>EMPIRES</label>
+                            <input type="number" id="empireCount" value="3" min="2" max="8">
+                        </div>
                     </div>
-                </div>
-                <button type="submit" class="btn-primary">Create Game</button>
-            </form>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>EMPIRE DENOMINATION</label>
+                            <input type="text" id="playerEmpireName" value="Human Empire">
+                        </div>
+                        <div class="form-group">
+                            <label>SPECTRUM IDENTIFIER</label>
+                            <select id="playerColor">
+                                <option value="cyan">Nebula Cyan</option>
+                                <option value="purple">Aion Purple</option>
+                                <option value="green">Cosmic Green</option>
+                                <option value="yellow">Solar Gold</option>
+                                <option value="red">Supernova Red</option>
+                                <option value="blue">Deep Indigo</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">LAUNCH COMMAND COMMANDER</button>
+                </form>
+            </div>
         </div>
 
+        <!-- Main Commander Layout -->
         <div class="game-main" id="gameMain" style="display: none;">
-            <div class="sidebar">
-                <div class="panel">
-                    <h3>Your Empire</h3>
+            <!-- Left Command Panel -->
+            <div class="sidebar sidebar-left">
+                <div class="panel telemetry-panel">
+                    <h3>EMPIRE SIGNATURE</h3>
                     <div id="empireInfo"></div>
                 </div>
-                <div class="panel">
-                    <h3>Resources</h3>
+                <div class="panel telemetry-panel">
+                    <h3>TELEMETRY RESOURCES</h3>
                     <div id="resourcesInfo"></div>
                 </div>
-                <div class="panel">
-                    <h3>Victory Progress</h3>
+                <div class="panel telemetry-panel">
+                    <h3>VICTORY MATRIX PROGRESS</h3>
                     <div id="victoryProgress"></div>
                 </div>
             </div>
 
+            <!-- Central 3D Command Deck -->
             <div class="galaxy-view">
                 <div class="galaxy-header">
-                    <h3>Galaxy Map</h3>
+                    <div class="deck-title">
+                        <span class="glow-dot"></span>
+                        <h3>3D TACTICAL COMMAND DECK</h3>
+                    </div>
                     <div class="map-controls">
-                        <button id="zoomIn">+</button>
-                        <button id="zoomOut">-</button>
+                        <button id="zoomIn" title="Camera In">+</button>
+                        <button id="zoomOut" title="Camera Out">-</button>
+                        <button id="resetCameraBtn" class="btn-reset" title="Reset Command Camera">⟲</button>
                     </div>
                 </div>
-                <div class="galaxy-map" id="galaxyMap"></div>
+                <!-- Three.js Canvas Container -->
+                <div class="galaxy-map-3d" id="galaxyMap"></div>
+                
+                <!-- Selected Star Telemetry HUD -->
+                <div class="selected-star-hud" id="selectedStarHud" style="display: none;">
+                    <div class="hud-close" id="closeHudBtn">✕</div>
+                    <h4 id="hudStarName">Star Alpha</h4>
+                    <div class="hud-body">
+                        <div class="hud-metric">
+                            <span class="label">COORDINATES</span>
+                            <span id="hudStarCoords" class="value text-primary">X: 12, Y: 44</span>
+                        </div>
+                        <div id="hudPlanetsList"></div>
+                    </div>
+                </div>
             </div>
 
-            <div class="sidebar">
-                <div class="panel">
-                    <h3>Fleet Commands</h3>
+            <!-- Right Queue Panel -->
+            <div class="sidebar sidebar-right">
+                <div class="panel action-panel-card">
+                    <h3>EMPIRE ORDER DISPATCH</h3>
                     <div class="action-panel">
+                        <label class="input-label">COMMAND ORDER</label>
                         <select id="actionType">
-                            <option value="MOVE_FLEET">Move Fleet</option>
-                            <option value="COLONIZE_PLANET">Colonize Planet</option>
-                            <option value="BUILD_STRUCTURE">Build Structure</option>
-                            <option value="CONSTRUCT_SHIP">Construct Ship</option>
-                            <option value="START_RESEARCH">Start Research</option>
-                            <option value="ESTABLISH_TRADE_ROUTE">Establish Trade Route</option>
+                            <option value="MOVE_FLEET">🚀 Move Fleet</option>
+                            <option value="COLONIZE_PLANET">🪐 Colonize Planet</option>
+                            <option value="BUILD_STRUCTURE">🏭 Build Structure</option>
+                            <option value="CONSTRUCT_SHIP">🛸 Construct Ship</option>
+                            <option value="START_RESEARCH">🔬 Start Research</option>
+                            <option value="ESTABLISH_TRADE_ROUTE">⇄ Establish Trade Route</option>
                         </select>
+                        <label class="input-label">SOURCE VECTOR</label>
                         <select id="sourceSelect"></select>
+                        <label class="input-label">TARGET DESTINATION</label>
                         <select id="targetSelect"></select>
-                        <button id="addActionBtn" class="btn-small">Add Action</button>
+                        <button id="addActionBtn" class="btn-action-add">DISPATCH ORDER</button>
                     </div>
                     <div id="pendingActions"></div>
                 </div>
-                <div class="panel">
-                    <h3>Actions Queue</h3>
+                <div class="panel queue-panel-card">
+                    <h3>TACTICAL ACTIONS QUEUE</h3>
                     <div id="actionsQueue"></div>
-                    <button id="submitTurnBtn" class="btn-primary">Submit Turn</button>
+                    <button id="submitTurnBtn" class="btn-submit-turn">EXECUTE EMPIRE TURN</button>
                 </div>
             </div>
         </div>
 
+        <!-- Floating Glass Turn Results -->
         <div class="feedback-panel" id="feedbackPanel" style="display: none;">
-            <h3>Turn Results</h3>
+            <div class="feedback-header">
+                <span class="feedback-pulse"></span>
+                <h3>TURN TELEMETRY DIGEST</h3>
+            </div>
             <div id="turnResults"></div>
         </div>
     </div>
 
+    <!-- CDN Imports: Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
