@@ -16,3 +16,20 @@
 
 ### Galaxy Generation (FN-004, 005, 006)
 - **Pattern**: Using a consistent PRNG (FN-007) across all generators ensures deterministic galaxy generation, which is critical for multiplayer and persistence.
+
+### Stitch Design System Integration (FN-025)
+- **Success Pattern**: Google Stitch requires strictly formatted hex color strings (e.g. `#00d2ff`) in visual tokens. Registering a global design system asset (`assets/5421627871935160731`) successfully binds visual styling to the "Echoes of Aion" project (`projects/3604850732401499349`).
+
+### Three.js 3D WebGL Command Deck Controls (FN-026)
+- **Success Pattern**: Custom camera mapping configurations in OrbitControls enable highly intuitive pan/rotation mapping matching the ThreeDeeCity specifications (Left-click drag to pan, right-click drag to rotate) via:
+  ```javascript
+  controls.mouseButtons = {
+      LEFT: THREE.MOUSE.PAN,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.ROTATE
+  };
+  ```
+
+### Web Speech API Advisor Events
+- **Success Pattern**: Integrating built-in `window.speechSynthesis` with typewriter-style real-time subtitle logs provides deep, context-aware digital assistant immersion (Stellaris-style) without requiring local audio binary installations.
+
