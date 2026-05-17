@@ -19,6 +19,8 @@ Echoes of Aion is a space strategy game with a focus on galaxy generation, persi
 - **FN-020**: Basic validators
 - **FN-021**: Deprecated/Archived (Duplicate of FN-017)
 - **FN-024**: Auto-merge conflict on FN-017 (Resolved by cleaning git tracking)
+- **FN-025**: Premium Glassmorphism UI & Stellaris Advisor TTS Speech (Completed)
+- **FN-026**: Three.js 3D WebGL Tactical Command Deck with Custom Panning & Rotation (Completed)
 
 ### In Review
 - **FN-022**: Server-side game state management (MERGING)

@@ -355,7 +355,7 @@ async function createGame(e) {
 
         if (!response.ok) throw new Error('Failed to create game');
 
-        gameState = await response.json();
+        gameState = sanitizeGameState(await response.json());
         playerEmpireId = gameState.empires[0].id;
 
         document.getElementById('gameSetup').style.display = 'none';
@@ -512,8 +512,26 @@ function getStringHash(str) {
     return Math.abs(hash);
 }
 
+// Ensure game state coordinates are valid numbers to prevent NaN rendering
+function sanitizeGameState(state) {
+    if (!state) return null;
+    if (state.stars && Array.isArray(state.stars)) {
+        state.stars.forEach(s => {
+            s.x_coord = parseFloat(s.x_coord);
+            s.y_coord = parseFloat(s.y_coord);
+        });
+    }
+    return state;
+}
+
 function renderGalaxyMap3D() {
-    if (!scene) return;
+    if (!scene || !gameState || !gameState.stars || gameState.stars.length === 0) return;
+
+    // Coerce coordinates as safety fallback
+    gameState.stars.forEach(s => {
+        s.x_coord = parseFloat(s.x_coord);
+        s.y_coord = parseFloat(s.y_coord);
+    });
 
     // Clear active meshes
     for (const mesh of starMeshes) scene.remove(mesh);
@@ -895,7 +913,7 @@ async function submitTurn() {
 
         const result = await response.json();
 
-        gameState = result.newState;
+        gameState = sanitizeGameState(result.newState);
         actionsQueue = [];
 
         renderGame();

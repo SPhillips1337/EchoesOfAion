@@ -12,6 +12,15 @@
 - **Merge Conflict Root Cause (FN-024)**: The `.fusion/` directory and test outputs (e.g., `vitest/results.json`) were being tracked by git despite being in `.gitignore`. **Solution**: Run `git rm --cached` on ignored files to prevent dirty worktrees from breaking automated agents.
 - **Vitest Mocking Pitfalls**: When using `vi.mock` for module dependencies, attempting to re-mock them dynamically within test blocks (`vi.mocked(fn).mockResolvedValue()`) can lead to race conditions or silent failures if the mock factory isn't configured robustly. **Solution**: Use `vi.spyOn` in `beforeEach` to mock module exports directly; it guarantees reliable resetting and overrides across multiple test blocks.
 
+### 3D Command Deck Render Corruption on Reload (FN-026)
+- **Issue**: Stars and hyperlanes were disappearing on page reload/re-submit with `Computed radius is NaN` errors in Three.js BufferGeometry.
+- **Root Causes**: 
+  1. **PostgreSQL NUMERIC Type Mismatch**: The database table definition for `stars` used `NUMERIC(10, 2) NOT NULL` for `x_coord` and `y_coord`. The `pg` client driver automatically parses `NUMERIC` types as string values in Node.js to preserve decimal precision. On reload or game re-fetch, this returned strings (e.g. `"118.34"`) instead of numbers, which caused mathematical scaling in `to3DX`/`to3DZ` to return `NaN` when calculating min/max bounding spheres.
+  2. **Nested Client Build Output**: The server's `build` script in `package.json` was using `tsc && cp -r ../client dist/client`. Because the destination `dist/client` directory already existed, subsequent build executions created a nested `dist/client/client` directory, causing updated frontend changes in `packages/client` to not be served to the browser correctly.
+- **Solutions**:
+  1. Add `parseFloat` sanitization on all game state coordinates in the client code (`app.js`) to guarantee coordinates are always actual numbers.
+  2. Fix the server's build script to clean the destination first: `"build": "tsc && rm -rf dist/client && cp -r ../client dist/client"`.
+
 ## ✅ Success Patterns
 
 ### Galaxy Generation (FN-004, 005, 006)
